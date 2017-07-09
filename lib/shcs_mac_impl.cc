@@ -36,6 +36,7 @@
 #include <gnuradio/thread/thread.h>
 #include <boost/random/uniform_int.hpp>
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/random/linear_congruential.hpp>
 #include <iostream>
 #include <iomanip>
 
@@ -132,25 +133,14 @@ namespace gr {
       suc_rand_seed = static_cast<uint16_t>(std::time(0));
       GR_LOG_DEBUG(d_logger, boost::format("SUC random seed %d.") % suc_rand_seed);
 
-      /* TODO: perform an energy scan to all channels and select the channel
-       * with the least measured energy.
-       * Currently, choose a random channel to set up network.
-       */
-      GR_LOG_DEBUG(d_logger, "Performing energy scan...");
-
-      boost::random::mt19937 rng(suc_rand_seed);
-      boost::random::uniform_int_distribution<> channel_dist(0, num_of_channels-1);
-      int working_channel = channel_dist(rng);
+      /* Choose a random channel to set up network. */
+      boost::random::minstd_rand rng(suc_rand_seed);
+      uint32_t current_seed = rng();
+      uint32_t working_channel = current_seed % num_of_channels;
       GR_LOG_DEBUG(d_logger, boost::format("Working channel: %d (%e)")
         % (working_channel + first_channel_index) % center_freqs[working_channel]);
 
       /* Setup working channel on USRP */
-      /* TODO: dict is not working, still no idea why (2017.06.11) */
-//      pmt::pmt_t command = pmt::make_dict();
-//      pmt::dict_add(command, pmt::mp("freq"), pmt::mp(center_freqs[working_channel]));
-//      pmt::dict_add(command, pmt::mp("bandwidth"), pmt::mp(bandwidth));
-//      pmt::dict_add(command, pmt::mp("rate"), pmt::mp(sampling_rate));
-
       pmt::pmt_t command = pmt::cons(
           pmt::mp("freq"),
           pmt::mp(center_freqs[working_channel])
@@ -165,7 +155,8 @@ namespace gr {
           GR_LOG_DEBUG(d_logger, boost::format("Time #%d") % heartbeat++);
 
           /* Perform channel hopping */
-          working_channel = channel_dist(rng);
+          current_seed = rng();
+          working_channel = current_seed % num_of_channels;
           GR_LOG_DEBUG(d_logger, boost::format("Channel hopping -> new channel: %d (%e)")
                   % (working_channel + first_channel_index) % center_freqs[working_channel]);
 
@@ -209,8 +200,10 @@ namespace gr {
               /* Prepare the beacon payload */
               d_msg[d_msg_len++] = (uint8_t) (Tss);
               d_msg[d_msg_len++] = (uint8_t) (Tss >> 8);
-              d_msg[d_msg_len++] = (uint8_t) (suc_rand_seed);
-              d_msg[d_msg_len++] = (uint8_t) (suc_rand_seed >> 8);
+              d_msg[d_msg_len++] = (uint8_t) (current_seed);
+              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 8);
+              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 16);
+              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 24);
 
               /* Calculate FCS */
               uint16_t fcs = crc16(d_msg, d_msg_len);

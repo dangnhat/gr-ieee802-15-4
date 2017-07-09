@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2017 <+YOU OR YOUR COMPANY+>.
+ * Copyright 2017 Real-time and Embedded Systems Laboratory, KAIST, South Korea.
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,10 +80,10 @@ namespace gr {
        bool       d_nwk_dev_type;
 
        /* wireless channel configuration */
-       static const int num_of_channels = 2;  // channel 25 -> 26: [2.475, ..., 2.480] GHz,
+       static const int num_of_channels = 16;  // channel 25 -> 26: [2.475, ..., 2.480] GHz,
        const double channel_step = 5e6; // 5MHz step between 2 channels.
-       const int first_channel_index = 25;
-       double center_freqs[num_of_channels] = {2.475e9}; // channel 25: 2.475GHz.
+       const int first_channel_index = 11;
+       double center_freqs[num_of_channels] = {2.405e9}; // channel 25: 2.475GHz.
 
        const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
        const double sampling_rate = 4e6;  // Hz,
