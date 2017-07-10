@@ -80,17 +80,20 @@ namespace gr {
        bool       d_nwk_dev_type;
 
        /* wireless channel configuration */
-       static const int num_of_channels = 16;  // channel 25 -> 26: [2.475, ..., 2.480] GHz,
+       static const int num_of_channels = 16;  // channel 11 -> 26: [2.405, ..., 2.480] GHz,
        const double channel_step = 5e6; // 5MHz step between 2 channels.
        const int first_channel_index = 11;
-       double center_freqs[num_of_channels] = {2.405e9}; // channel 25: 2.475GHz.
+       double center_freqs[num_of_channels] = {2.405e9}; // channel 11: 2.405GHz.
 
        const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
        const double sampling_rate = 4e6;  // Hz,
 
-       const int Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
-       const int Tf = Ts*num_of_channels; // ms, frame duration.
-       const uint16_t Tss = 1; // ms, sensing duration.
+       const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
+       const uint32_t Tf = Ts*num_of_channels; // ms, frame duration.
+       const uint16_t Tss = 100; // ms, sensing duration.
+       const uint16_t Tb = 10; // ms, beacon duration.
+       const uint16_t Tr = 10; // ms, reporting duration.
+
 
        const uint16_t pan_id = 0x1234; // just a random number, for now.
        const uint16_t suc_saddr = 0x0000; // Coordinator default address.
@@ -149,6 +152,16 @@ namespace gr {
        * @brief   Print message in buffer.
        */
       void print_message();
+
+      /**
+       * @brief    Buffer related functions.
+       */
+      uint16_t buffer_to_uint16(uint8_t *buffer); // LSByte first
+      uint32_t buffer_to_uint32(uint8_t *buffer); // LSByte first
+      void uint16_to_buffer(uint16_t data, uint8_t* buffer); // LSByte fisrt
+      void uint32_to_buffer(uint32_t data, uint8_t* buffer); // LSByte fisrt
+      float buffer_to_float(uint8_t *buffer); // dec-2byte, frac-2byte (2 digits)
+      void float_to_buffer(float data, uint8_t *buffer); // dec-2byte, frac-2byte (2 digits)
     };
 
   } // namespace ieee802_15_4

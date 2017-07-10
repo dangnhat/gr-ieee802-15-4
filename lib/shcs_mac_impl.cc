@@ -42,6 +42,8 @@
 
 #include "shcs_mac_impl.h"
 #include "shcs_ieee802154.h"
+#include "shcs_tasks_processor_base.hpp"
+#include "shcs_tasks_processor_timers.hpp"
 
 using namespace gr::ieee802_15_4;
 using namespace std;
@@ -402,6 +404,64 @@ namespace gr {
 
     /*------------------------------------------------------------------------*/
     float shcs_mac_impl::get_packet_error_ratio(){ return float(d_num_packet_errors)/d_num_packets_received; }
+
+    /*----------------------------------------------------------------------------*/
+    uint16_t buffer_to_uint16(uint8_t* buffer) {
+      uint16_t ret_val;
+
+      ret_val = (*buffer) | (*(buffer + 1) << 8);
+
+      return ret_val;
+    }
+
+    /*----------------------------------------------------------------------------*/
+    uint32_t buffer_to_uint32(uint8_t* buffer) {
+      uint32_t ret_val;
+
+      ret_val = (*buffer) | (*(buffer + 1) << 8) | (*(buffer + 2) << 16) | (*(buffer + 3) << 24);
+
+      return ret_val;
+    }
+
+    /*----------------------------------------------------------------------------*/
+    void uint16_to_buffer(uint16_t data, uint8_t* &buffer) {
+      *buffer = (uint8_t)data;
+      *(++buffer) = (uint8_t)(data >> 8);
+    }
+
+    /*----------------------------------------------------------------------------*/
+    void uint32_to_buffer(uint32_t data, uint8_t* &buffer) {
+      *buffer = (uint8_t)data;
+      *(++buffer) = (uint8_t)(data >> 8);
+      *(++buffer) = (uint8_t)(data >> 16);
+      *(++buffer) = (uint8_t)(data >> 24);
+    }
+
+    /*----------------------------------------------------------------------------*/
+    float buffer_to_float(uint8_t* buffer) {
+      float ret_val;
+      uint16_t dec;
+      uint16_t frac;
+
+      dec = buffer_to_uint16(buffer);
+      frac = buffer_to_uint16(buffer);
+
+      ret_val = (float)dec;
+      ret_val += ((float)frac)/100;
+
+      return ret_val;
+    }
+
+    /*----------------------------------------------------------------------------*/
+    void float_to_buffer(float data, uint8_t* &buffer) {
+      uint16_t dec, frac;
+
+      dec = (uint16_t) data;
+      frac = ((uint16_t) (data * 100)) % 100;
+
+      uint16_to_buffer(dec, buffer);
+      uint16_to_buffer(frac, buffer);
+    }
 
 
   } /* namespace ieee802_15_4 */
