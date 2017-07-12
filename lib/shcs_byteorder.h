@@ -230,47 +230,47 @@ static inline uint64_t byteorder_swapll(uint64_t v);
  * @param[in]      v   The integer to convert.
  * @returns        Converted integer.
  */
-static inline uint16_t htons(uint16_t v);
-
-/**
- * @brief          Convert from host byte order to network byte order, 32 bit.
- * @see            byteorder_htonl()
- * @param[in]      v   The integer to convert.
- * @returns        Converted integer.
- */
-static inline uint32_t htonl(uint32_t v);
-
-/**
- * @brief          Convert from host byte order to network byte order, 64 bit.
- * @see            byteorder_htonll()
- * @param[in]      v   The integer to convert.
- * @returns        Converted integer.
- */
-static inline uint64_t htonll(uint64_t v);
-
-/**
- * @brief          Convert from network byte order to host byte order, 16 bit.
- * @see            byteorder_ntohs()
- * @param[in]      v   The integer to convert.
- * @returns        Converted integer.
- */
-static inline uint16_t ntohs(uint16_t v);
-
-/**
- * @brief          Convert from network byte order to host byte order, 32 bit.
- * @see            byteorder_ntohl()
- * @param[in]      v   The integer to convert.
- * @returns        Converted integer.
- */
-static inline uint32_t ntohl(uint32_t v);
-
-/**
- * @brief          Convert from network byte order to host byte order, 64 bit.
- * @see            byteorder_ntohll()
- * @param[in]      v   The integer to convert.
- * @returns        Converted integer.
- */
-static inline uint64_t ntohll(uint64_t v);
+//static inline uint16_t htons(uint16_t v);
+//
+///**
+// * @brief          Convert from host byte order to network byte order, 32 bit.
+// * @see            byteorder_htonl()
+// * @param[in]      v   The integer to convert.
+// * @returns        Converted integer.
+// */
+//static inline uint32_t htonl(uint32_t v);
+//
+///**
+// * @brief          Convert from host byte order to network byte order, 64 bit.
+// * @see            byteorder_htonll()
+// * @param[in]      v   The integer to convert.
+// * @returns        Converted integer.
+// */
+//static inline uint64_t htonll(uint64_t v);
+//
+///**
+// * @brief          Convert from network byte order to host byte order, 16 bit.
+// * @see            byteorder_ntohs()
+// * @param[in]      v   The integer to convert.
+// * @returns        Converted integer.
+// */
+//static inline uint16_t ntohs(uint16_t v);
+//
+///**
+// * @brief          Convert from network byte order to host byte order, 32 bit.
+// * @see            byteorder_ntohl()
+// * @param[in]      v   The integer to convert.
+// * @returns        Converted integer.
+// */
+//static inline uint32_t ntohl(uint32_t v);
+//
+///**
+// * @brief          Convert from network byte order to host byte order, 64 bit.
+// * @see            byteorder_ntohll()
+// * @param[in]      v   The integer to convert.
+// * @returns        Converted integer.
+// */
+//static inline uint64_t ntohll(uint64_t v);
 
 
 /* **************************** IMPLEMENTATION ***************************** */
@@ -385,38 +385,38 @@ static inline uint64_t byteorder_ntohll(network_uint64_t v)
     return _byteorder_swap(v.u64, ll);
 }
 
-static inline uint16_t htons(uint16_t v)
-{
-    return byteorder_htons(v).u16;
-}
-
-static inline uint32_t htonl(uint32_t v)
-{
-    return byteorder_htonl(v).u32;
-}
-
-static inline uint64_t htonll(uint64_t v)
-{
-    return byteorder_htonll(v).u64;
-}
-
-static inline uint16_t ntohs(uint16_t v)
-{
-    network_uint16_t input = { v };
-    return byteorder_ntohs(input);
-}
-
-static inline uint32_t ntohl(uint32_t v)
-{
-    network_uint32_t input = { v };
-    return byteorder_ntohl(input);
-}
-
-static inline uint64_t ntohll(uint64_t v)
-{
-    network_uint64_t input = { v };
-    return byteorder_ntohll(input);
-}
+//static inline uint16_t htons(uint16_t v)
+//{
+//    return byteorder_htons(v).u16;
+//}
+//
+//static inline uint32_t htonl(uint32_t v)
+//{
+//    return byteorder_htonl(v).u32;
+//}
+//
+//static inline uint64_t htonll(uint64_t v)
+//{
+//    return byteorder_htonll(v).u64;
+//}
+//
+//static inline uint16_t ntohs(uint16_t v)
+//{
+//    network_uint16_t input = { v };
+//    return byteorder_ntohs(input);
+//}
+//
+//static inline uint32_t ntohl(uint32_t v)
+//{
+//    network_uint32_t input = { v };
+//    return byteorder_ntohl(input);
+//}
+//
+//static inline uint64_t ntohll(uint64_t v)
+//{
+//    network_uint64_t input = { v };
+//    return byteorder_ntohll(input);
+//}
 
 #ifdef __cplusplus
 }

@@ -71,7 +71,7 @@ namespace gr {
        int         d_msg_offset;
        int         d_msg_len;
        uint8_t     d_seq_nr;
-       char        d_msg[256];
+       uint8_t     d_msg[256];
 
        int d_num_packet_errors;
        int d_num_packets_received;
@@ -93,13 +93,25 @@ namespace gr {
        const uint16_t Tss = 100; // ms, sensing duration.
        const uint16_t Tb = 10; // ms, beacon duration.
        const uint16_t Tr = 10; // ms, reporting duration.
+       const uint16_t Th = 10; // ms, channel hopping duration.
 
 
        const uint16_t pan_id = 0x1234; // just a random number, for now.
        const uint16_t suc_saddr = 0x0000; // Coordinator default address.
        const uint16_t su_saddr = 0x0101; // SU default address.
-       uint16_t suc_rand_seed = 0;
 
+
+       /* Time frame related variables */
+       boost::random::minstd_rand rng;
+       uint32_t current_rand_seed = 0;
+       boost::posix_time::ptime current_time;
+
+       /* Channel hopping */
+       uint32_t current_working_channel;
+
+       /* Spectrum sensing */
+       bool is_spectrum_sensing_completed = false;
+       bool is_channel_available = false;
 
        /* Control thread */
        boost::shared_ptr<gr::thread::thread> control_thread_ptr;
@@ -136,7 +148,7 @@ namespace gr {
        * @param[in]   buf, buffer.
        * @param[in]   len, buffer length.
        */
-      void generate_mac(const char *buf, int len);
+      void generate_mac(const uint8_t *buf, int len);
 
       /**
        * @brief   Calculate CRC16 checksum for a buffer.
@@ -146,7 +158,7 @@ namespace gr {
        *
        * @return      crc16.
        */
-      uint16_t crc16(char *buf, int len);
+      uint16_t crc16(uint8_t *buf, int len);
 
       /**
        * @brief   Print message in buffer.
@@ -154,14 +166,36 @@ namespace gr {
       void print_message();
 
       /**
+       * @brief   Channel hopping. Move to the current_working_channel.
+       */
+      void channel_hopping(void);
+
+      /**
+       * @brief   Spectrum sensing.
+       */
+      void spectrum_sensing(void);
+
+      /**
+       * @brief   SUC only, broadcast beacon if spectrum sensing returns channel
+       * is available.
+       */
+      void beacon_broadcasting(void);
+
+      /**
+       * @brief   Reload tasks at the end of time slot to begin a new one.
+       */
+      void end_of_time_slot(void);
+
+
+      /**
        * @brief    Buffer related functions.
        */
-      uint16_t buffer_to_uint16(uint8_t *buffer); // LSByte first
-      uint32_t buffer_to_uint32(uint8_t *buffer); // LSByte first
+      uint16_t buffer_to_uint16(uint8_t* buffer); // LSByte first
+      uint32_t buffer_to_uint32(uint8_t* buffer); // LSByte first
       void uint16_to_buffer(uint16_t data, uint8_t* buffer); // LSByte fisrt
       void uint32_to_buffer(uint32_t data, uint8_t* buffer); // LSByte fisrt
-      float buffer_to_float(uint8_t *buffer); // dec-2byte, frac-2byte (2 digits)
-      void float_to_buffer(float data, uint8_t *buffer); // dec-2byte, frac-2byte (2 digits)
+      float buffer_to_float(uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
+      void float_to_buffer(float data, uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
     };
 
   } // namespace ieee802_15_4

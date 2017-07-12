@@ -46,9 +46,18 @@
 #include "shcs_tasks_processor_timers.hpp"
 
 using namespace gr::ieee802_15_4;
+using namespace tp_timers;
 using namespace std;
 
 #define dout d_debug && cout
+
+// Part of tasks_processor class from
+// tasks_processor_timers.hpp, that must be defined
+// Somewhere in source file
+tasks_processor& tasks_processor::get() {
+    static tasks_processor proc;
+    return proc;
+}
 
 namespace gr {
   namespace ieee802_15_4 {
@@ -125,102 +134,149 @@ namespace gr {
     }
 
     /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::channel_hopping(void) {
+      boost::posix_time::ptime time;
+      time = boost::posix_time::microsec_clock::universal_time();
+      cout << time << ": Channel hopping" << endl;
+
+      current_rand_seed = rng();
+      current_working_channel = current_rand_seed % num_of_channels;
+      GR_LOG_DEBUG(d_logger, boost::format("Channel hopping -> new channel: %d (%e)")
+              % (current_working_channel + first_channel_index) % center_freqs[current_working_channel]);
+
+      pmt::pmt_t command = pmt::cons(
+          pmt::mp("freq"),
+          pmt::mp(center_freqs[current_working_channel])
+      );
+
+      message_port_pub(pmt::mp("usrp sink cmd"), command);
+      message_port_pub(pmt::mp("usrp source cmd"), command);
+    }
+
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::spectrum_sensing(void) {
+      boost::posix_time::ptime time;
+      time = boost::posix_time::microsec_clock::universal_time();
+      cout << time << ": Spectrum sensing" << endl;
+
+      is_spectrum_sensing_completed = true;
+      is_channel_available = true;
+    }
+
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::beacon_broadcasting(void) {
+      boost::posix_time::ptime time;
+      time = boost::posix_time::microsec_clock::universal_time();
+      cout <<  time << ": Beacon broadcasting" << endl;
+
+
+      if (!is_spectrum_sensing_completed || !is_channel_available) {
+          GR_LOG_DEBUG(d_logger, "Channel is busy, will not broadcast beacon.");
+          return;
+      }
+
+      /* Broadcast beacon */
+      GR_LOG_DEBUG(d_logger, "Preparing beacon.");
+
+      uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+      uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
+          | IEEE802154_FCF_SRC_ADDR_VOID;
+      d_msg_len = 0;
+      le_uint16_t pan_id_le = byteorder_btols(byteorder_htons(pan_id));
+
+      if ((d_msg_len = ieee802154_set_frame_hdr(mhr, (uint8_t*)&suc_saddr, 2,
+            NULL, 0, pan_id_le, pan_id_le, flags, d_seq_nr++)) == 0) {
+          GR_LOG_DEBUG(d_logger, "Beacon header error.");
+      }
+      else {
+          /* Copy header to MAC frame */
+          memcpy(d_msg, mhr, d_msg_len);
+
+          /* Superframe Specification field */
+          d_msg[d_msg_len++] = 0x00;
+          d_msg[d_msg_len++] = 0xc0;
+
+          /* GTS Specification field */
+          d_msg[d_msg_len++] = 0;
+
+          /* Pending Address Specification field */
+          d_msg[d_msg_len++] = 0;
+
+          /* Prepare the beacon payload */
+          uint16_to_buffer(Tss, &d_msg[d_msg_len]);
+          d_msg_len += 2;
+
+          uint32_to_buffer(current_rand_seed, &d_msg[d_msg_len]);
+          d_msg_len += 4;
+
+          /* Calculate FCS */
+          uint16_t fcs = crc16(d_msg, d_msg_len);
+
+          /* Add FCS to frame */
+          d_msg[d_msg_len++] = (uint8_t) fcs;
+          d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
+
+          /* Broadcast beacon */
+          print_message();
+          message_port_pub(pmt::mp("pdu out"), pmt::cons(pmt::PMT_NIL,
+                    pmt::make_blob(d_msg, d_msg_len)));
+      }
+    }
+
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::end_of_time_slot(void) {
+      boost::posix_time::ptime time;
+      time = boost::posix_time::microsec_clock::universal_time();
+      cout << time << ": end_of_time_slot" << endl;
+
+      /* Reload tasks */
+      current_time = current_time + boost::posix_time::milliseconds(Ts);
+
+      /* Perform channel hopping */
+      tasks_processor::get().run_at(current_time,
+                                    boost::bind(&shcs_mac_impl::channel_hopping, this));
+
+      /* Spectrum sensing */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th),
+                                    boost::bind(&shcs_mac_impl::spectrum_sensing, this));
+
+      /* Beacon broadcasting */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th + Tss),
+                                    boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
+
+      /* Reload tasks at the end of a time slot */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Ts),
+                                    boost::bind(&shcs_mac_impl::end_of_time_slot, this));
+    }
+
+    /*------------------------------------------------------------------------*/
     void shcs_mac_impl::coor_control_thread(void) {
       GR_LOG_DEBUG(d_logger, "Coordinator control thread created.");
 
       /* Waiting for everything to settle */
       boost::this_thread::sleep_for(boost::chrono::seconds{3});
 
-      /* Initialize random seed */
-      suc_rand_seed = static_cast<uint16_t>(std::time(0));
-      GR_LOG_DEBUG(d_logger, boost::format("SUC random seed %d.") % suc_rand_seed);
+      current_time = boost::posix_time::microsec_clock::universal_time();
+      cout << "Current time: " << current_time << endl;
 
-      /* Choose a random channel to set up network. */
-      boost::random::minstd_rand rng(suc_rand_seed);
-      uint32_t current_seed = rng();
-      uint32_t working_channel = current_seed % num_of_channels;
-      GR_LOG_DEBUG(d_logger, boost::format("Working channel: %d (%e)")
-        % (working_channel + first_channel_index) % center_freqs[working_channel]);
+      /* Perform channel hopping */
+      tasks_processor::get().run_at(current_time,
+                                    boost::bind(&shcs_mac_impl::channel_hopping, this));
 
-      /* Setup working channel on USRP */
-      pmt::pmt_t command = pmt::cons(
-          pmt::mp("freq"),
-          pmt::mp(center_freqs[working_channel])
-      );
+      /* Spectrum sensing */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th),
+                                    boost::bind(&shcs_mac_impl::spectrum_sensing, this));
 
-      message_port_pub(pmt::mp("usrp sink cmd"), command);
-      message_port_pub(pmt::mp("usrp source cmd"), command);
+      /* Beacon broadcasting */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th + Tss),
+                                    boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
 
-      int heartbeat = 0;
-      while (1) {
-          boost::this_thread::sleep_for(boost::chrono::seconds{1});
-          GR_LOG_DEBUG(d_logger, boost::format("Time #%d") % heartbeat++);
+      /* Reload tasks at the end of a time slot */
+      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Ts),
+                                    boost::bind(&shcs_mac_impl::end_of_time_slot, this));
 
-          /* Perform channel hopping */
-          current_seed = rng();
-          working_channel = current_seed % num_of_channels;
-          GR_LOG_DEBUG(d_logger, boost::format("Channel hopping -> new channel: %d (%e)")
-                  % (working_channel + first_channel_index) % center_freqs[working_channel]);
-
-          pmt::pmt_t command = pmt::cons(
-              pmt::mp("freq"),
-              pmt::mp(center_freqs[working_channel])
-          );
-
-          message_port_pub(pmt::mp("usrp sink cmd"), command);
-          message_port_pub(pmt::mp("usrp source cmd"), command);
-
-          /* TODO: Perform sensing, currently assume the current channel is available */
-
-          /* Broadcast beacon */
-          GR_LOG_DEBUG(d_logger, "Preparing beacon.");
-
-          uint8_t mhr[IEEE802154_MAX_HDR_LEN];
-          uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
-              | IEEE802154_FCF_SRC_ADDR_VOID;
-          d_msg_len = 0;
-          le_uint16_t pan_id_le = byteorder_btols(byteorder_htons(pan_id));
-
-          if ((d_msg_len = ieee802154_set_frame_hdr(mhr, (uint8_t*)&suc_saddr, 2,
-                NULL, 0, pan_id_le, pan_id_le, flags, d_seq_nr++)) == 0) {
-              GR_LOG_DEBUG(d_logger, "Beacon header error.");
-          }
-          else {
-              /* Copy header to MAC frame */
-              memcpy(d_msg, mhr, d_msg_len);
-
-              /* Superframe Specification field */
-              d_msg[d_msg_len++] = 0x00;
-              d_msg[d_msg_len++] = 0xc0;
-
-              /* GTS Specification field */
-              d_msg[d_msg_len++] = 0;
-
-              /* Pending Address Specification field */
-              d_msg[d_msg_len++] = 0;
-
-              /* Prepare the beacon payload */
-              d_msg[d_msg_len++] = (uint8_t) (Tss);
-              d_msg[d_msg_len++] = (uint8_t) (Tss >> 8);
-              d_msg[d_msg_len++] = (uint8_t) (current_seed);
-              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 8);
-              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 16);
-              d_msg[d_msg_len++] = (uint8_t) (current_seed >> 24);
-
-              /* Calculate FCS */
-              uint16_t fcs = crc16(d_msg, d_msg_len);
-
-              /* Add FCS to frame */
-              d_msg[d_msg_len++] = (uint8_t) fcs;
-              d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
-
-              /* Broadcast beacon */
-              print_message();
-              message_port_pub(pmt::mp("pdu out"), pmt::cons(pmt::PMT_NIL,
-                        pmt::make_blob(d_msg, d_msg_len)));
-          }
-      }
-
+      /* Start tasks_processor */
+      tasks_processor::get().start();
     }
 
     /*------------------------------------------------------------------------*/
@@ -283,7 +339,7 @@ namespace gr {
         return;
       }
 
-      uint16_t crc = crc16((char*)pmt::blob_data(blob), data_len);
+      uint16_t crc = crc16((uint8_t*)pmt::blob_data(blob), data_len);
       d_num_packets_received++;
       if(crc) {
         d_num_packet_errors++;
@@ -331,14 +387,14 @@ namespace gr {
 
       dout << "MAC: received new message from APP of length " << pmt::blob_length(blob) << endl;
 
-      generate_mac((const char*)pmt::blob_data(blob), pmt::blob_length(blob));
+      generate_mac((const uint8_t*)pmt::blob_data(blob), pmt::blob_length(blob));
       print_message();
       message_port_pub(pmt::mp("pdu out"), pmt::cons(pmt::PMT_NIL,
           pmt::make_blob(d_msg, d_msg_len)));
     }
 
     /*------------------------------------------------------------------------*/
-    uint16_t shcs_mac_impl::crc16(char *buf, int len) {
+    uint16_t shcs_mac_impl::crc16(uint8_t *buf, int len) {
       uint16_t crc = 0;
 
       for(int i = 0; i < len; i++) {
@@ -357,7 +413,7 @@ namespace gr {
     }
 
     /*------------------------------------------------------------------------*/
-    void shcs_mac_impl::generate_mac(const char *buf, int len) {
+    void shcs_mac_impl::generate_mac(const uint8_t *buf, int len) {
 
       // FCF
       // data frame, no security
@@ -406,7 +462,7 @@ namespace gr {
     float shcs_mac_impl::get_packet_error_ratio(){ return float(d_num_packet_errors)/d_num_packets_received; }
 
     /*----------------------------------------------------------------------------*/
-    uint16_t buffer_to_uint16(uint8_t* buffer) {
+    uint16_t shcs_mac_impl::buffer_to_uint16(uint8_t* buffer) {
       uint16_t ret_val;
 
       ret_val = (*buffer) | (*(buffer + 1) << 8);
@@ -415,7 +471,7 @@ namespace gr {
     }
 
     /*----------------------------------------------------------------------------*/
-    uint32_t buffer_to_uint32(uint8_t* buffer) {
+    uint32_t shcs_mac_impl::buffer_to_uint32(uint8_t* buffer) {
       uint32_t ret_val;
 
       ret_val = (*buffer) | (*(buffer + 1) << 8) | (*(buffer + 2) << 16) | (*(buffer + 3) << 24);
@@ -424,13 +480,13 @@ namespace gr {
     }
 
     /*----------------------------------------------------------------------------*/
-    void uint16_to_buffer(uint16_t data, uint8_t* &buffer) {
+    void shcs_mac_impl::uint16_to_buffer(uint16_t data, uint8_t* buffer) {
       *buffer = (uint8_t)data;
       *(++buffer) = (uint8_t)(data >> 8);
     }
 
     /*----------------------------------------------------------------------------*/
-    void uint32_to_buffer(uint32_t data, uint8_t* &buffer) {
+    void shcs_mac_impl::uint32_to_buffer(uint32_t data, uint8_t* buffer) {
       *buffer = (uint8_t)data;
       *(++buffer) = (uint8_t)(data >> 8);
       *(++buffer) = (uint8_t)(data >> 16);
@@ -438,12 +494,13 @@ namespace gr {
     }
 
     /*----------------------------------------------------------------------------*/
-    float buffer_to_float(uint8_t* buffer) {
+    float shcs_mac_impl::buffer_to_float(uint8_t* buffer) {
       float ret_val;
       uint16_t dec;
       uint16_t frac;
 
       dec = buffer_to_uint16(buffer);
+      buffer += 2;
       frac = buffer_to_uint16(buffer);
 
       ret_val = (float)dec;
@@ -453,13 +510,14 @@ namespace gr {
     }
 
     /*----------------------------------------------------------------------------*/
-    void float_to_buffer(float data, uint8_t* &buffer) {
+    void shcs_mac_impl::float_to_buffer(float data, uint8_t* buffer) {
       uint16_t dec, frac;
 
       dec = (uint16_t) data;
       frac = ((uint16_t) (data * 100)) % 100;
 
       uint16_to_buffer(dec, buffer);
+      buffer += 2;
       uint16_to_buffer(frac, buffer);
     }
 
