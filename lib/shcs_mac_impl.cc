@@ -63,13 +63,13 @@ namespace gr {
   namespace ieee802_15_4 {
 
     /*------------------------------------------------------------------------*/
-    shcs_mac::sptr shcs_mac::make(bool debug, bool nwk_dev_type)
+    shcs_mac::sptr shcs_mac::make(bool debug, bool nwk_dev_type, int suc_id, int mac_addr)
     {
-      return gnuradio::get_initial_sptr(new shcs_mac_impl(debug, nwk_dev_type));
+      return gnuradio::get_initial_sptr(new shcs_mac_impl(debug, nwk_dev_type, suc_id, mac_addr));
     }
 
     /*------------------------------------------------------------------------*/
-    shcs_mac_impl::shcs_mac_impl(bool debug, bool nwk_dev_type) :
+    shcs_mac_impl::shcs_mac_impl(bool debug, bool nwk_dev_type, int suc_id, int mac_addr) :
     block ("shcs_mac",
           gr::io_signature::make(0, 0, 0),
           gr::io_signature::make(0, 0, 0)),
@@ -78,11 +78,17 @@ namespace gr {
           d_debug(debug),
           d_num_packet_errors(0),
           d_num_packets_received(0),
-          d_nwk_dev_type(nwk_dev_type)
+          d_nwk_dev_type(nwk_dev_type),
+          d_suc_id(suc_id),
+          d_mac_addr(mac_addr)
     {
       /* Print hello message and time stamp */
-      dout << "Hello, this is SHCS MAC protocol implementation, version 0.0.7" << endl;
+      dout << "Hello, this is SHCS MAC protocol implementation, version 0.1" << endl;
       dout << "NWK device type: " << (nwk_dev_type==SUC ? "SU Coordinator" : "SU") << endl;
+      if (nwk_dev_type == SUC) {
+          dout << "SUC ID: " << hex << d_suc_id << dec << endl;
+      }
+      dout << "Short MAC address: " << hex << d_mac_addr << dec << endl;
 
       /* Register message port from NWK Layer */
       message_port_register_in(pmt::mp("app in"));
@@ -91,6 +97,11 @@ namespace gr {
       /* Register message port from PHY Layer */
       message_port_register_in(pmt::mp("pdu in"));
       set_msg_handler(pmt::mp("pdu in"), boost::bind(&shcs_mac_impl::mac_in, this, _1));
+
+      /* Register message port from Signal detector */
+      message_port_register_in(pmt::mp("spectrum sensing"));
+      set_msg_handler(pmt::mp("spectrum sensing"),
+                      boost::bind(&shcs_mac_impl::spectrum_sensing_callback, this, _1));
 
       /* Register message port to NWK Layer */
       message_port_register_out(pmt::mp("app out"));
@@ -102,15 +113,18 @@ namespace gr {
       message_port_register_out(pmt::mp("usrp sink cmd"));
       message_port_register_out(pmt::mp("usrp source cmd"));
 
+      /* Change dout to scientific mode */
+      dout << scientific;
+
       /* Initialize channels list */
       for (int count = 1; count < num_of_channels; count++) {
           center_freqs[count] = center_freqs[count - 1] + channel_step;
       }
 
-      GR_LOG_INFO(d_logger, "List of operating channels and center freq.: ");
+      dout << "List of operating channels and center freq.: " << endl;
       for (int count = 0; count < num_of_channels; count++) {
-          GR_LOG_INFO(d_logger, boost::format{"%d: %e (Hz)"} % (count + first_channel_index)
-                      % center_freqs[count] );
+          dout << (count + first_channel_index) << ": "
+              << center_freqs[count] << " Hz" << endl;
       }
 
       /* Create control threads */
@@ -130,19 +144,52 @@ namespace gr {
     /*------------------------------------------------------------------------*/
     shcs_mac_impl::~shcs_mac_impl()
     {
-      GR_LOG_DEBUG(d_logger, "Destructor called.");
+      dout << "Destructor called." << endl;
+    }
+
+    /*------------------------------------------------------------------------*/
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::coor_control_thread(void) {
+      dout << "Coordinator control thread created." << endl;
+
+      /* Waiting for everything to settle */
+      boost::this_thread::sleep_for(boost::chrono::seconds{3});
+
+      time_slot_start = boost::posix_time::microsec_clock::universal_time();
+      dout << "time_slot_start: " << time_slot_start << endl;
+
+      /* Perform channel hopping */
+      tasks_processor::get().run_at(time_slot_start,
+                                    boost::bind(&shcs_mac_impl::channel_hopping, this));
+
+      /* Spectrum sensing */
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Th),
+                                    boost::bind(&shcs_mac_impl::spectrum_sensing, this));
+
+      /* Beacon broadcasting */
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Th + Tss),
+                                    boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
+
+      /* Reload tasks at the end of a time slot */
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Ts),
+                                    boost::bind(&shcs_mac_impl::reload_tasks, this));
+
+      /* Start tasks_processor */
+      tasks_processor::get().start();
     }
 
     /*------------------------------------------------------------------------*/
     void shcs_mac_impl::channel_hopping(void) {
       boost::posix_time::ptime time;
       time = boost::posix_time::microsec_clock::universal_time();
-      cout << time << ": Channel hopping" << endl;
+      dout << endl;
+      dout << time << ": Channel hopping" << endl;
 
       current_rand_seed = rng();
       current_working_channel = current_rand_seed % num_of_channels;
-      GR_LOG_DEBUG(d_logger, boost::format("Channel hopping -> new channel: %d (%e)")
-              % (current_working_channel + first_channel_index) % center_freqs[current_working_channel]);
+      dout << "-> new channel: "
+          << current_working_channel + first_channel_index << ", "
+          << center_freqs[current_working_channel] << endl;
 
       pmt::pmt_t command = pmt::cons(
           pmt::mp("freq"),
@@ -155,38 +202,71 @@ namespace gr {
 
     /*------------------------------------------------------------------------*/
     void shcs_mac_impl::spectrum_sensing(void) {
+      is_spectrum_sensing_completed = false;
+      spectrum_sensing_dectection_count = 0;
+      control_thread_state = SPECTRUM_SENSING;
+
       boost::posix_time::ptime time;
       time = boost::posix_time::microsec_clock::universal_time();
-      cout << time << ": Spectrum sensing" << endl;
+      dout << time << ": Spectrum sensing" << endl;
 
+      /* Sleep in sensing duration */
+      boost::this_thread::sleep_for(boost::chrono::milliseconds{Tss});
+
+      if (spectrum_sensing_dectection_count > 1) {
+          is_channel_available = false;
+      }
+      else {
+          is_channel_available = true;
+      }
       is_spectrum_sensing_completed = true;
-      is_channel_available = true;
+    }
+
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::spectrum_sensing_callback(pmt::pmt_t msg) {
+      if (control_thread_state != SPECTRUM_SENSING) {
+          dout << "Not in SPECTRUM_SENSING state" << endl;
+          return;
+      }
+
+      dout << "In SPECTRUM_SENSING state" << endl;
+
+      /* Spectrum sensing state, find number of occurrences of '#' */
+      pmt::print(msg);
+//      string s = pmt::symbol_to_string(msg);
+//      dout << s << endl;
+//      dout << "Number of #: " << std::count(s.begin(), s.end(), '#') << endl;
+
     }
 
     /*------------------------------------------------------------------------*/
     void shcs_mac_impl::beacon_broadcasting(void) {
+      control_thread_state = BEACON;
+
       boost::posix_time::ptime time;
       time = boost::posix_time::microsec_clock::universal_time();
-      cout <<  time << ": Beacon broadcasting" << endl;
+      dout <<  time << ": Beacon broadcasting" << endl;
 
+      if (!is_spectrum_sensing_completed) {
+          dout << "Spectrum sensing is not completed, will not broadcast beacon." << endl;
+          return;
+      }
 
-      if (!is_spectrum_sensing_completed || !is_channel_available) {
-          GR_LOG_DEBUG(d_logger, "Channel is busy, will not broadcast beacon.");
+      if (!is_channel_available) {
+          dout << "Channel is busy, will not broadcast beacon." << endl;
           return;
       }
 
       /* Broadcast beacon */
-      GR_LOG_DEBUG(d_logger, "Preparing beacon.");
-
       uint8_t mhr[IEEE802154_MAX_HDR_LEN];
       uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
           | IEEE802154_FCF_SRC_ADDR_VOID;
       d_msg_len = 0;
-      le_uint16_t pan_id_le = byteorder_btols(byteorder_htons(pan_id));
+      le_uint16_t pan_id_le = byteorder_btols(byteorder_htons(d_suc_id));
 
-      if ((d_msg_len = ieee802154_set_frame_hdr(mhr, (uint8_t*)&suc_saddr, 2,
+      if ((d_msg_len = ieee802154_set_frame_hdr(mhr, (uint8_t*)&d_mac_addr, 2,
             NULL, 0, pan_id_le, pan_id_le, flags, d_seq_nr++)) == 0) {
-          GR_LOG_DEBUG(d_logger, "Beacon header error.");
+          dout << "Beacon header error." << endl;
       }
       else {
           /* Copy header to MAC frame */
@@ -203,6 +283,9 @@ namespace gr {
           d_msg[d_msg_len++] = 0;
 
           /* Prepare the beacon payload */
+          uint16_to_buffer(d_suc_id, &d_msg[d_msg_len]);
+          d_msg_len += 2;
+
           uint16_to_buffer(Tss, &d_msg[d_msg_len]);
           d_msg_len += 2;
 
@@ -224,103 +307,82 @@ namespace gr {
     }
 
     /*------------------------------------------------------------------------*/
-    void shcs_mac_impl::end_of_time_slot(void) {
+    void shcs_mac_impl::reload_tasks(void) {
+      control_thread_state = RELOADING;
+
       boost::posix_time::ptime time;
       time = boost::posix_time::microsec_clock::universal_time();
-      cout << time << ": end_of_time_slot" << endl;
+      dout << time << ": End of time slot" << endl;
 
       /* Reload tasks */
-      current_time = current_time + boost::posix_time::milliseconds(Ts);
+      time_slot_start = time_slot_start + boost::posix_time::milliseconds(Ts);
+      dout << "Next time slot start: " << time_slot_start << endl;
 
       /* Perform channel hopping */
-      tasks_processor::get().run_at(current_time,
+      tasks_processor::get().run_at(time_slot_start,
                                     boost::bind(&shcs_mac_impl::channel_hopping, this));
 
       /* Spectrum sensing */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th),
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Th),
                                     boost::bind(&shcs_mac_impl::spectrum_sensing, this));
 
-      /* Beacon broadcasting */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th + Tss),
-                                    boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
+      if (d_nwk_dev_type == SUC) {
+        /* Beacon broadcasting */
+        tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Th + Tss),
+                                      boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
+      }
 
       /* Reload tasks at the end of a time slot */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Ts),
-                                    boost::bind(&shcs_mac_impl::end_of_time_slot, this));
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Ts),
+                                    boost::bind(&shcs_mac_impl::reload_tasks, this));
     }
 
     /*------------------------------------------------------------------------*/
-    void shcs_mac_impl::coor_control_thread(void) {
-      GR_LOG_DEBUG(d_logger, "Coordinator control thread created.");
+    /*------------------------------------------------------------------------*/
+    void shcs_mac_impl::su_control_thread(void) {
+      dout << "SU control thread created." << endl;
 
       /* Waiting for everything to settle */
       boost::this_thread::sleep_for(boost::chrono::seconds{3});
 
-      current_time = boost::posix_time::microsec_clock::universal_time();
-      cout << "Current time: " << current_time << endl;
+      /* Bootstrapping */
+      su_bootstrapping();
 
       /* Perform channel hopping */
-      tasks_processor::get().run_at(current_time,
+      tasks_processor::get().run_at(time_slot_start,
                                     boost::bind(&shcs_mac_impl::channel_hopping, this));
 
       /* Spectrum sensing */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th),
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Th),
                                     boost::bind(&shcs_mac_impl::spectrum_sensing, this));
 
-      /* Beacon broadcasting */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Th + Tss),
-                                    boost::bind(&shcs_mac_impl::beacon_broadcasting, this));
-
       /* Reload tasks at the end of a time slot */
-      tasks_processor::get().run_at(current_time + boost::posix_time::milliseconds(Ts),
-                                    boost::bind(&shcs_mac_impl::end_of_time_slot, this));
+      tasks_processor::get().run_at(time_slot_start + boost::posix_time::milliseconds(Ts),
+                                    boost::bind(&shcs_mac_impl::reload_tasks, this));
 
       /* Start tasks_processor */
       tasks_processor::get().start();
+
     }
-
     /*------------------------------------------------------------------------*/
-    void shcs_mac_impl::su_control_thread(void) {
-      GR_LOG_DEBUG(d_logger, "SU control thread created.");
+    void shcs_mac_impl::su_bootstrapping(void) {
+      control_thread_state = BOOTSTRAPPING;
 
-      /* Waiting for everything to settle */
-      boost::this_thread::sleep_for(boost::chrono::seconds{3});
-
-      /* Choose a random channel to set up network. */
-      boost::random::mt19937 rng; // default seed.
-      boost::random::uniform_int_distribution<> channel_dist(0, num_of_channels-1);
-      int working_channel = channel_dist(rng);
-      GR_LOG_DEBUG(d_logger, boost::format("Working channel: %d (%e)")
-        % (working_channel + first_channel_index) % center_freqs[working_channel]);
-
-      /* Setup working channel on USRP */
-      pmt::pmt_t command = pmt::cons(
-          pmt::mp("freq"),
-          pmt::mp(center_freqs[working_channel])
-      );
-
-      message_port_pub(pmt::mp("usrp sink cmd"), command);
-      message_port_pub(pmt::mp("usrp source cmd"), command);
-
-      int heartbeat = 0;
       while (1) {
-          boost::this_thread::sleep_for(boost::chrono::seconds{1});
-          GR_LOG_DEBUG(d_logger, boost::format("Time #%d") % heartbeat++);
+        /* Choose a random channel and wait for a time frame */
+        channel_hopping();
 
-          /* Perform channel hopping */
-          working_channel = channel_dist(rng);
-          GR_LOG_DEBUG(d_logger, boost::format("Channel hopping -> new channel: %d (%e)")
-                  % (working_channel + first_channel_index) % center_freqs[working_channel]);
+        dout << "Wait for beacon within a time frame, " << Tf << " ms" << endl;
 
-          pmt::pmt_t command = pmt::cons(
-              pmt::mp("freq"),
-              pmt::mp(center_freqs[working_channel])
-          );
-
-          message_port_pub(pmt::mp("usrp sink cmd"), command);
-          message_port_pub(pmt::mp("usrp source cmd"), command);
+        try {
+            boost::this_thread::sleep_for(boost::chrono::milliseconds{Tf});
+        }
+        catch (boost::thread_interrupted&) {
+            dout << "Interrupted, beacon received." << endl;
+            control_thread_state = NULL_STATE;
+            return;
+        }
       }
-
     }
 
     /*------------------------------------------------------------------------*/
@@ -335,7 +397,7 @@ namespace gr {
 
       size_t data_len = pmt::blob_length(blob);
       if(data_len < 11) {
-        dout << "MAC: frame too short. Dropping!" << endl;
+          dout << "MAC: frame too short. Dropping!" << endl;
         return;
       }
 
@@ -346,20 +408,69 @@ namespace gr {
         dout << "MAC: wrong crc. Dropping packet!" << endl;
         return;
       }
-      else{
-        //dout << "MAC: correct crc. Propagate packet to APP layer." << endl;
-      }
+
+      dout << "MAC: correct crc. Propagate packet to APP layer." << endl;
 
       if (d_nwk_dev_type == SU) {
+          /* SU only, check for beacon packet */
           uint8_t* frame_ptr = (uint8_t*)pmt::blob_data(blob);
-          if (frame_ptr[0] == 0x80 && frame_ptr[1] == 0x90) {
-              GR_LOG_DEBUG(d_logger, "Found beacon");
-              uint16_t recv_suc_id = frame_ptr[3] | ((uint16_t)frame_ptr[4] << 8);
-              uint16_t recv_rand_seed = frame_ptr[13] | ((uint16_t)frame_ptr[14] << 8);
+          size_t data_index = 0;
 
-              GR_LOG_DEBUG(d_logger, boost::format("Received SUC ID: %x.") % recv_suc_id);
-              GR_LOG_DEBUG(d_logger, boost::format("Received random seed: %d.") % recv_rand_seed);
+          /* Print received message */
+//          for (data_index = 0; data_index < data_len; data_index++) {
+//              printf("%x ", frame_ptr[data_index]);
+//          }
+//          dout << endl;
 
+          if ((frame_ptr[0] & 0x03) == 0) {
+              /* Beacon found */
+              dout << "Found a beacon" << endl;
+
+              switch (control_thread_state) {
+                case BOOTSTRAPPING:
+                  dout << "Bootstrapping state." << endl;
+
+                  /* Store SUC_ID, sensing time, current random seed, time frame start time */
+                  time_slot_start = boost::posix_time::microsec_clock::universal_time();
+                  time_slot_start = time_slot_start
+                      + boost::posix_time::milliseconds(Ts)
+                      - boost::posix_time::milliseconds(Tss)
+                      - boost::posix_time::milliseconds(Th);
+
+                  data_index = ieee802154_get_frame_hdr_len(frame_ptr);
+
+                  /* Skip superframe, GTS and pending address fields */
+                  data_index += 4;
+
+                  d_suc_id = buffer_to_uint16(&frame_ptr[data_index]);
+                  data_index += 2;
+                  Tss = buffer_to_uint16(&frame_ptr[data_index]);
+                  data_index += 2;
+                  current_rand_seed = buffer_to_uint32(&frame_ptr[data_index]);
+                  data_index += 4;
+
+                  /* update random seed */
+                  rng.seed(current_rand_seed);
+
+                  dout << "Received SUC ID: " << hex << d_suc_id << dec << endl;
+                  dout << "Received Tss: " << Tss << endl;
+                  dout << "Received random seed: " << current_rand_seed << endl;
+                  dout << "Next time slot start: " << time_slot_start << endl;
+
+                  /* Wake up control thread */
+                  control_thread_ptr->interrupt();
+
+                  break;
+
+                case BEACON:
+                  dout << "Beacon state." << endl;
+
+
+                  break;
+
+                default:
+                  break;
+              }
           }
       }
 

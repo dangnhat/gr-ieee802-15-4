@@ -1,95 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
-<?grc format='1' created='3.7.10'?>
+<?grc format='1' created='3.7.12'?>
 <flow_graph>
   <timestamp>Mon Dec 15 13:46:31 2014</timestamp>
   <block>
     <key>options</key>
     <param>
       <key>author</key>
-      <value>Nhat Pham @ RESL, KAIST</value>
+      <value></value>
     </param>
     <param>
       <key>window_size</key>
       <value>1280, 1024</value>
-    </param>
-    <param>
-      <key>category</key>
-      <value>Custom</value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>description</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(16, 8)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>generate_options</key>
-      <value>qt_gui</value>
-    </param>
-    <param>
-      <key>hier_block_src_path</key>
-      <value>.:</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>SHCS_MAC_SUC</value>
-    </param>
-    <param>
-      <key>max_nouts</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>qt_qss_theme</key>
-      <value></value>
-    </param>
-    <param>
-      <key>realtime_scheduling</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>run_command</key>
-      <value>{python} -u {filename}</value>
-    </param>
-    <param>
-      <key>run_options</key>
-      <value>prompt</value>
-    </param>
-    <param>
-      <key>run</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>thread_safe_setters</key>
-      <value></value>
-    </param>
-    <param>
-      <key>title</key>
-      <value>IEEE 802.15.4 Transceiver using OQPSK PHY</value>
-    </param>
-  </block>
-  <block>
-    <key>options</key>
-    <param>
-      <key>author</key>
-      <value></value>
-    </param>
-    <param>
-      <key>window_size</key>
-      <value></value>
     </param>
     <param>
       <key>category</key>
@@ -105,11 +26,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(776, 132)</value>
+      <value>(1008, 116)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -125,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>options_0</value>
+      <value>SUCoordinator</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -158,105 +79,6 @@
     <param>
       <key>title</key>
       <value></value>
-    </param>
-  </block>
-  <block>
-    <key>variable_qtgui_chooser</key>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>2405000000</value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(1064, 8)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>freq</value>
-    </param>
-    <param>
-      <key>label0</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label1</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label2</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label3</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label4</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label</key>
-      <value>Channel</value>
-    </param>
-    <param>
-      <key>labels</key>
-      <value>[str(i) for i in range(11, 27)]</value>
-    </param>
-    <param>
-      <key>num_opts</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>option0</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>option1</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>option2</key>
-      <value>2</value>
-    </param>
-    <param>
-      <key>option3</key>
-      <value>3</value>
-    </param>
-    <param>
-      <key>option4</key>
-      <value>4</value>
-    </param>
-    <param>
-      <key>options</key>
-      <value>[1000000 * (2400 + 5 * (i - 10)) for i in range(11, 27)]</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.QVBoxLayout</value>
-    </param>
-    <param>
-      <key>type</key>
-      <value>real</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>combo_box</value>
     </param>
   </block>
   <block>
@@ -275,7 +97,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(920, 8)</value>
+      <value>(1144, 8)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -338,7 +160,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(776, 8)</value>
+      <value>(1008, 8)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -413,7 +235,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(888, 331)</value>
+      <value>(1120, 332)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -456,7 +278,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(72, 212)</value>
+      <value>(304, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -499,11 +321,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(358, 116)</value>
+      <value>(592, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -574,7 +396,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(376, 596)</value>
+      <value>(608, 672)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -625,7 +447,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(672, 339)</value>
+      <value>(904, 340)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -668,7 +490,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(336, 520)</value>
+      <value>(568, 592)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -711,7 +533,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(352, 224)</value>
+      <value>(584, 224)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -766,7 +588,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(336, 368)</value>
+      <value>(568, 368)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -775,6 +597,10 @@
     <param>
       <key>id</key>
       <value>ieee802_15_4_shcs_mac_0</value>
+    </param>
+    <param>
+      <key>mac_addr</key>
+      <value>0</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -787,6 +613,156 @@
     <param>
       <key>nwk_dev_type</key>
       <value>True</value>
+    </param>
+    <param>
+      <key>suc_id</key>
+      <value>101</value>
+    </param>
+  </block>
+  <block>
+    <key>inspector_qtgui_sink_vf</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>cfreq</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>fft_len</key>
+      <value>1024</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(288, 312)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>inspector_qtgui_sink_vf_0</value>
+    </param>
+    <param>
+      <key>manual</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>msgports</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>rf_unit</key>
+      <value>1000000</value>
+    </param>
+    <param>
+      <key>samp_rate</key>
+      <value>4e6</value>
+    </param>
+  </block>
+  <block>
+    <key>inspector_signal_detector_cvf</key>
+    <param>
+      <key>auto</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>avg</key>
+      <value>0.8</value>
+    </param>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>fft_len</key>
+      <value> 1024</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(64, 288)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>inspector_signal_detector_cvf_0</value>
+    </param>
+    <param>
+      <key>logfile</key>
+      <value>/home/nhatpham/sdrncr/gnuradio_working/gr-ieee802-15-4/examples/outputs/su_ed_log.txt</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>min_bw</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>quant</key>
+      <value>0.0001</value>
+    </param>
+    <param>
+      <key>samp_rate</key>
+      <value>4000000</value>
+    </param>
+    <param>
+      <key>sensitivity</key>
+      <value> 0.2</value>
+    </param>
+    <param>
+      <key>threshold</key>
+      <value> -40</value>
+    </param>
+    <param>
+      <key>window</key>
+      <value>firdes.WIN_BLACKMAN_hARRIS</value>
     </param>
   </block>
   <block>
@@ -805,7 +781,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(344, 716)</value>
+      <value>(576, 788)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -836,7 +812,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(334, 63)</value>
+      <value>(568, 60)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -899,7 +875,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(664, 620)</value>
+      <value>(896, 692)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1822,7 +1798,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(664, 444)</value>
+      <value>(896, 524)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3157,7 +3133,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(64, 468)</value>
+      <value>(296, 544)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3403,8 +3379,32 @@
     <sink_key>command</sink_key>
   </connection>
   <connection>
+    <source_block_id>inspector_qtgui_sink_vf_0</source_block_id>
+    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
+    <source_key>map_out</source_key>
+    <sink_key>spectrum sensing</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>inspector_signal_detector_cvf_0</source_block_id>
+    <sink_block_id>inspector_qtgui_sink_vf_0</sink_block_id>
+    <source_key>map_out</source_key>
+    <sink_key>map_in</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>inspector_signal_detector_cvf_0</source_block_id>
+    <sink_block_id>inspector_qtgui_sink_vf_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
     <source_block_id>uhd_usrp_source_0</source_block_id>
     <sink_block_id>ieee802_15_4_oqpsk_phy_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>uhd_usrp_source_0</source_block_id>
+    <sink_block_id>inspector_signal_detector_cvf_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>

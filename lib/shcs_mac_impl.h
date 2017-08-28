@@ -27,6 +27,16 @@
 namespace gr {
   namespace ieee802_15_4 {
 
+    enum control_thread_state_e {
+      NULL_STATE,
+      BOOTSTRAPPING,
+      SPECTRUM_SENSING,
+      BEACON,
+      REPORTING,
+      RELOADING
+    };
+
+
     class shcs_mac_impl : public shcs_mac
     {
      public:
@@ -35,7 +45,7 @@ namespace gr {
        *
        * @param[in]   debug, turn on/off debugging messages.
        */
-      shcs_mac_impl(bool debug, bool nwk_dev_type);
+      shcs_mac_impl(bool debug, bool nwk_dev_type, int suc_id, int mac_addr);
 
       /**
        * @brief   Destructor.
@@ -88,23 +98,21 @@ namespace gr {
        const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
        const double sampling_rate = 4e6;  // Hz,
 
-       const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
+       const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
        const uint32_t Tf = Ts*num_of_channels; // ms, frame duration.
-       const uint16_t Tss = 100; // ms, sensing duration.
+       uint16_t Tss = 1000; // ms, sensing duration.
        const uint16_t Tb = 10; // ms, beacon duration.
        const uint16_t Tr = 10; // ms, reporting duration.
        const uint16_t Th = 10; // ms, channel hopping duration.
 
 
-       const uint16_t pan_id = 0x1234; // just a random number, for now.
-       const uint16_t suc_saddr = 0x0000; // Coordinator default address.
-       const uint16_t su_saddr = 0x0101; // SU default address.
-
+       uint16_t d_suc_id = 0; // just a random number, for now.
+       uint16_t d_mac_addr = 0; // Short mac address (16 bits).
 
        /* Time frame related variables */
        boost::random::minstd_rand rng;
        uint32_t current_rand_seed = 0;
-       boost::posix_time::ptime current_time;
+       boost::posix_time::ptime time_slot_start;
 
        /* Channel hopping */
        uint32_t current_working_channel;
@@ -112,9 +120,11 @@ namespace gr {
        /* Spectrum sensing */
        bool is_spectrum_sensing_completed = false;
        bool is_channel_available = false;
+       uint32_t spectrum_sensing_dectection_count = 0;
 
        /* Control thread */
        boost::shared_ptr<gr::thread::thread> control_thread_ptr;
+       uint16_t control_thread_state = NULL_STATE;
 
        /**
         * @brief   Control thread for Coordinator.
@@ -166,14 +176,34 @@ namespace gr {
       void print_message();
 
       /**
-       * @brief   Channel hopping. Move to the current_working_channel.
+       * @brief   Channel hopping. Generate a new seed, and move to new channel
+       * (new channel = current seed % number of channels).
+       * IN:
+       * - rng.
+       * OUT:
+       * - rng.
+       * - current_rand_seed.
+       * - current_working_channel.
        */
       void channel_hopping(void);
 
       /**
-       * @brief   Spectrum sensing.
+       * @brief   Perform local spectrum sensing within sensing time period.
+       * IN:
+       * - Tss.
+       * OUT:
+       * - is_spectrum_sensing_completed.
+       * - is_channel_available.
        */
       void spectrum_sensing(void);
+
+      /**
+       * @brief   Call back when signals map is received from signal detector
+       *          module.
+       *
+       * @param[in]   msg, signal map from signal detector module.
+       */
+      void spectrum_sensing_callback(pmt::pmt_t msg);
 
       /**
        * @brief   SUC only, broadcast beacon if spectrum sensing returns channel
@@ -182,10 +212,25 @@ namespace gr {
       void beacon_broadcasting(void);
 
       /**
-       * @brief   Reload tasks at the end of time slot to begin a new one.
+       * @brief   SUC only, reload tasks at the end of time slot to begin a new one.
        */
-      void end_of_time_slot(void);
+      void reload_tasks(void);
 
+      /**
+       * @brief   SU only, bootstrapping for SU. It will choose a random channel
+       * in channels list and wait for beacon for 1 Time frame duration (Tf).
+       * When an active beacon is received, SU will do the following tasks upon
+       * receiving a beacon:
+       * - store SUC ID
+       * - store current random seed for common hopping sequence.
+       * - store sensing duration time (not needed, will be the same for every nodes)
+       * - synchronize time slot starting time.
+       * - control_thread_state will be changed to NULL_STATE upon returning.
+       * Otherwise, current channel is occupied with PU activity so it will be
+       * removed from channels list (currently, it's not implemented).
+       * SU will choose another random channel from current channels list.
+       */
+      void su_bootstrapping(void);
 
       /**
        * @brief    Buffer related functions.
