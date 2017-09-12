@@ -58,7 +58,7 @@
     </param>
     <param>
       <key>realtime_scheduling</key>
-      <value>1</value>
+      <value></value>
     </param>
     <param>
       <key>run_command</key>
@@ -82,6 +82,60 @@
     </param>
   </block>
   <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(296, 676)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>device_serial</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>"serial=30F5512"</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(296, 740)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>initial_center_freq</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>2480e6</value>
+    </param>
+  </block>
+  <block>
     <key>variable_qtgui_range</key>
     <param>
       <key>comment</key>
@@ -97,7 +151,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1144, 8)</value>
+      <value>(296, 808)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -160,7 +214,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1008, 8)</value>
+      <value>(1080, 552)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -205,6 +259,76 @@
     <param>
       <key>widget</key>
       <value>counter_slider</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 252)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>1024</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_complex_to_mag_squared</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(328, 340)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_complex_to_mag_squared_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>vlen</key>
+      <value>vector_len</value>
     </param>
   </block>
   <block>
@@ -362,6 +486,120 @@
     <param>
       <key>type</key>
       <value>"UDP_SERVER"</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_stream_to_vector</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 452)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_stream_to_vector_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>complex</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>num_items</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>vlen</key>
+      <value>1</value>
+    </param>
+  </block>
+  <block>
+    <key>fft_vxx</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>fft_size</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>forward</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 312)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>fft_vxx_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>complex</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>nthreads</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>shift</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>window</key>
+      <value>window.blackmanharris(vector_len)</value>
     </param>
   </block>
   <block>
@@ -587,6 +825,10 @@
       <value>True</value>
     </param>
     <param>
+      <key>fft_len</key>
+      <value>vector_len</value>
+    </param>
+    <param>
       <key>_coordinate</key>
       <value>(568, 368)</value>
     </param>
@@ -617,152 +859,6 @@
     <param>
       <key>suc_id</key>
       <value>101</value>
-    </param>
-  </block>
-  <block>
-    <key>inspector_qtgui_sink_vf</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>cfreq</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>fft_len</key>
-      <value>1024</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(288, 312)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>inspector_qtgui_sink_vf_0</value>
-    </param>
-    <param>
-      <key>manual</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>msgports</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rf_unit</key>
-      <value>1000000</value>
-    </param>
-    <param>
-      <key>samp_rate</key>
-      <value>4e6</value>
-    </param>
-  </block>
-  <block>
-    <key>inspector_signal_detector_cvf</key>
-    <param>
-      <key>auto</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>avg</key>
-      <value>0.8</value>
-    </param>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>fft_len</key>
-      <value> 1024</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(64, 288)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>inspector_signal_detector_cvf_0</value>
-    </param>
-    <param>
-      <key>logfile</key>
-      <value>/home/nhatpham/sdrncr/gnuradio_working/gr-ieee802-15-4/examples/outputs/su_ed_log.txt</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>min_bw</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>quant</key>
-      <value>0.0001</value>
-    </param>
-    <param>
-      <key>samp_rate</key>
-      <value>4000000</value>
-    </param>
-    <param>
-      <key>sensitivity</key>
-      <value> 0.2</value>
-    </param>
-    <param>
-      <key>threshold</key>
-      <value> -40</value>
-    </param>
-    <param>
-      <key>window</key>
-      <value>firdes.WIN_BLACKMAN_hARRIS</value>
     </param>
   </block>
   <block>
@@ -843,7 +939,7 @@
     </param>
     <param>
       <key>bw</key>
-      <value>4e6</value>
+      <value>2e6</value>
     </param>
     <param>
       <key>alias</key>
@@ -1142,7 +1238,7 @@
     </param>
     <param>
       <key>center_freq0</key>
-      <value>2.405e9</value>
+      <value>initial_center_freq</value>
     </param>
     <param>
       <key>norm_gain0</key>
@@ -1786,7 +1882,7 @@
     </param>
     <param>
       <key>dev_addr</key>
-      <value>serial=30F551E</value>
+      <value>device_serial</value>
     </param>
     <param>
       <key>dev_args</key>
@@ -1957,7 +2053,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value>TX/RX</value>
+      <value>RX2</value>
     </param>
     <param>
       <key>bw0</key>
@@ -1965,7 +2061,7 @@
     </param>
     <param>
       <key>center_freq0</key>
-      <value>2.405e9</value>
+      <value>initial_center_freq</value>
     </param>
     <param>
       <key>dc_offs_enb0</key>
@@ -3121,7 +3217,7 @@
     </param>
     <param>
       <key>dev_addr</key>
-      <value>serial=30F551E</value>
+      <value>device_serial</value>
     </param>
     <param>
       <key>dev_args</key>
@@ -3289,6 +3385,12 @@
     </param>
   </block>
   <connection>
+    <source_block_id>blocks_complex_to_mag_squared_0</source_block_id>
+    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
     <source_block_id>blocks_message_strobe_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>strobe</source_key>
@@ -3299,6 +3401,18 @@
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>pdus</source_key>
     <sink_key>bcin</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>blocks_stream_to_vector_0</source_block_id>
+    <sink_block_id>fft_vxx_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>fft_vxx_0</source_block_id>
+    <sink_block_id>blocks_complex_to_mag_squared_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>foo_packet_pad_0</source_block_id>
@@ -3379,32 +3493,14 @@
     <sink_key>command</sink_key>
   </connection>
   <connection>
-    <source_block_id>inspector_qtgui_sink_vf_0</source_block_id>
-    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
-    <source_key>map_out</source_key>
-    <sink_key>spectrum sensing</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>inspector_signal_detector_cvf_0</source_block_id>
-    <sink_block_id>inspector_qtgui_sink_vf_0</sink_block_id>
-    <source_key>map_out</source_key>
-    <sink_key>map_in</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>inspector_signal_detector_cvf_0</source_block_id>
-    <sink_block_id>inspector_qtgui_sink_vf_0</sink_block_id>
+    <source_block_id>uhd_usrp_source_0</source_block_id>
+    <sink_block_id>blocks_stream_to_vector_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>uhd_usrp_source_0</source_block_id>
     <sink_block_id>ieee802_15_4_oqpsk_phy_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>uhd_usrp_source_0</source_block_id>
-    <sink_block_id>inspector_signal_detector_cvf_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>

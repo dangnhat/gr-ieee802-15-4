@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>energy_detector</value>
+      <value>PU_activity</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -105,7 +105,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2480e6</value>
+      <value>2475e6</value>
     </param>
   </block>
   <block>
@@ -395,7 +395,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>4e6</value>
+      <value>10e6</value>
     </param>
   </block>
   <block>
@@ -433,7 +433,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2479e6</value>
+      <value>2480e6</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -469,15 +469,15 @@
     </param>
     <param>
       <key>start</key>
-      <value>2479e6</value>
+      <value>2470e6</value>
     </param>
     <param>
       <key>step</key>
-      <value>1e6</value>
+      <value>5e6</value>
     </param>
     <param>
       <key>stop</key>
-      <value>2481e6</value>
+      <value>2480e6</value>
     </param>
     <param>
       <key>rangeType</key>
@@ -512,7 +512,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>"serial=30FD822"</value>
+      <value>"serial=30F551E"</value>
     </param>
   </block>
   <block>
@@ -2391,7 +2391,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value>TX/RX</value>
+      <value>RX2</value>
     </param>
     <param>
       <key>bw0</key>

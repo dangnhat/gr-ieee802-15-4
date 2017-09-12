@@ -22,6 +22,7 @@
 #define INCLUDED_IEEE802_15_4_SHCS_MAC_IMPL_H
 
 #include <ieee802_15_4/shcs_mac.h>
+#include <boost/lockfree/spsc_queue.hpp>
 
 
 namespace gr {
@@ -29,10 +30,11 @@ namespace gr {
 
     enum control_thread_state_e {
       NULL_STATE,
-      BOOTSTRAPPING,
+      SU_BOOTSTRAPPING,
       SPECTRUM_SENSING,
       BEACON,
       REPORTING,
+      DATA_TRANSMISSION,
       RELOADING
     };
 
@@ -45,7 +47,8 @@ namespace gr {
        *
        * @param[in]   debug, turn on/off debugging messages.
        */
-      shcs_mac_impl(bool debug, bool nwk_dev_type, int suc_id, int mac_addr);
+      shcs_mac_impl(bool debug, bool nwk_dev_type, int suc_id, int mac_addr,
+                    int fft_len);
 
       /**
        * @brief   Destructor.
@@ -53,6 +56,20 @@ namespace gr {
        * @param[in]   debug, turn on/off debugging messages.
        */
       ~shcs_mac_impl();
+
+      /**
+       * @brief   Work function overload. It's used for spectrum sensing.
+       *
+       * \param noutput_items  number of output and input items to write on each in/out stream
+       * \param input_items vector of pointers to the input items, one entry per input stream
+       * \param output_items  vector of pointers to the output items, one entry per output stream
+       *
+       * \returns number of items actually written to each output stream, or -1 on EOF.
+       * It is OK to return a value less than noutput_items.  -1 <= return value <= noutput_items
+       */
+      int work(int noutput_items,
+               gr_vector_const_void_star &input_items,
+               gr_vector_void_star &output_items);
 
       /**
        * @brief   Return number of error packets.
@@ -82,6 +99,7 @@ namespace gr {
        int         d_msg_len;
        uint8_t     d_seq_nr;
        uint8_t     d_msg[256];
+       int         d_fft_len;
 
        int d_num_packet_errors;
        int d_num_packets_received;
@@ -90,24 +108,27 @@ namespace gr {
        bool       d_nwk_dev_type;
 
        /* wireless channel configuration */
-       static const int num_of_channels = 16;  // channel 11 -> 26: [2.405, ..., 2.480] GHz,
+       static const int num_of_channels = 3;  // channel 24 -> 26: [2.470, ..., 2.480] GHz,
        const double channel_step = 5e6; // 5MHz step between 2 channels.
-       const int first_channel_index = 11;
-       double center_freqs[num_of_channels] = {2.405e9}; // channel 11: 2.405GHz.
+       const int first_channel_index = 24;
+       double center_freqs[num_of_channels] = {2.470e9}; // channel 24: 2.470GHz.
 
        const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
        const double sampling_rate = 4e6;  // Hz,
 
-       const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
+       const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
        const uint32_t Tf = Ts*num_of_channels; // ms, frame duration.
-       uint16_t Tss = 1000; // ms, sensing duration.
+       const uint16_t Th = 5; // ms, channel hopping duration.
+       uint16_t Tss = 10; // ms, sensing duration.
        const uint16_t Tb = 10; // ms, beacon duration.
-       const uint16_t Tr = 10; // ms, reporting duration.
-       const uint16_t Th = 10; // ms, channel hopping duration.
-
+       const uint16_t Tr = 5; // ms, reporting duration.
+       const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
+                                        // if needed.
 
        uint16_t d_suc_id = 0; // just a random number, for now.
        uint16_t d_mac_addr = 0; // Short mac address (16 bits).
+       const uint16_t d_broadcast_addr = 0xffff;
+       const uint16_t d_coordinator_addr = 0x00;
 
        /* Time frame related variables */
        boost::random::minstd_rand rng;
@@ -120,11 +141,23 @@ namespace gr {
        /* Spectrum sensing */
        bool is_spectrum_sensing_completed = false;
        bool is_channel_available = false;
-       uint32_t spectrum_sensing_dectection_count = 0;
+       double d_ss_threshold_dBm = 10; // dBm, 50% of 20dBm.
+       double d_avg_power = 0; // W.
+       double d_avg_power_dBm = 0; // dBm
+       uint32_t d_avg_power_count = 0;
+
+       /* Beacon duration */
+       bool is_beacon_received = false; // SU only.
+       bool is_busy_signal_received = false;
 
        /* Control thread */
        boost::shared_ptr<gr::thread::thread> control_thread_ptr;
-       uint16_t control_thread_state = NULL_STATE;
+       uint16_t d_control_thread_state = NULL_STATE;
+
+       /* Transmission thread */
+       boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
+       const long unsigned int d_transmit_queue_size = 128;
+       boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue{d_transmit_queue_size};
 
        /**
         * @brief   Control thread for Coordinator.
@@ -135,6 +168,11 @@ namespace gr {
          * @brief   Control thread for SU.
          */
        void su_control_thread(void);
+
+       /**
+        * @brief   Transmission thread.
+        */
+      void transmit_thread(void);
 
        /**
         * @brief   Handle package from PHY layer and forward processed package
@@ -173,7 +211,7 @@ namespace gr {
       /**
        * @brief   Print message in buffer.
        */
-      void print_message();
+      void print_message(uint8_t* buf, int len);
 
       /**
        * @brief   Channel hopping. Generate a new seed, and move to new channel
@@ -198,21 +236,28 @@ namespace gr {
       void spectrum_sensing(void);
 
       /**
-       * @brief   Call back when signals map is received from signal detector
-       *          module.
-       *
-       * @param[in]   msg, signal map from signal detector module.
-       */
-      void spectrum_sensing_callback(pmt::pmt_t msg);
-
-      /**
-       * @brief   SUC only, broadcast beacon if spectrum sensing returns channel
+       * @brief   SUC: broadcast beacon if spectrum sensing returns channel
        * is available.
+       *          SU: wait for beacon. Set is_received_beacon accordingly.
        */
-      void beacon_broadcasting(void);
+      void beacon_duration(void);
 
       /**
-       * @brief   SUC only, reload tasks at the end of time slot to begin a new one.
+       * @brief   both SU and SUC: wait for busy signal. Set is_busy_signal_received
+       * accordingly.
+       */
+      void reporting_duration(void);
+
+      /**
+       * @brief   both SUC, and SU: if the channel is busy (either
+       * is_channel_available = false, is_beacon_received = false, is_signal_received = true),
+       * set the state to SLEEPING (drop all packets). Otherwise, set the state
+       * to DATA_TRANSMISSION.
+       */
+      void data_duration(void);
+
+      /**
+       * @brief   reload tasks at the end of time slot to begin a new one.
        */
       void reload_tasks(void);
 

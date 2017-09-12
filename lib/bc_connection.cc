@@ -16,6 +16,9 @@
  */
 #include "bc_connection.h"
 
+#define DEBUG_EN 0
+#define dout DEBUG_EN && std::cout
+
 using namespace gr::ieee802_15_4;
 
 bc_connection::bc_connection(rime_stack *block, uint16_t channel, pmt::pmt_t inport,
@@ -66,6 +69,14 @@ bc_connection::unpack(pmt::pmt_t msg)
 	unsigned char buf[256];
 	size_t data_len = pmt::blob_length(msg);
 	std::memcpy(buf, pmt::blob_data(msg), data_len);
+
+	/* Test */
+  dout << "RIME: BC: new frame arrived, len: " << data_len << std::endl;
+  for (int count = 0; count < data_len; count++) {
+    dout << std::hex << buf[count] << " ";
+  }
+  dout << std::dec << std::endl;
+
 	pmt::pmt_t rime_payload = pmt::make_blob(buf + header_length, data_len - header_length);
 	d_block->message_port_pub(d_outport, pmt::cons(pmt::PMT_NIL, rime_payload));
 }

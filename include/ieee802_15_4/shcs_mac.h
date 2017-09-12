@@ -23,7 +23,7 @@
 #define INCLUDED_IEEE802_15_4_SHCS_MAC_H
 
 #include <ieee802_15_4/api.h>
-#include <gnuradio/block.h>
+#include <gnuradio/sync_block.h>
 
 namespace gr {
   namespace ieee802_15_4 {
@@ -38,7 +38,7 @@ namespace gr {
      * \ingroup ieee802_15_4
      *
      */
-    class IEEE802_15_4_API shcs_mac : virtual public gr::block
+    class IEEE802_15_4_API shcs_mac : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<shcs_mac> sptr;
@@ -51,7 +51,8 @@ namespace gr {
        * class. ieee802_15_4::shcs_mac::make is the public interface for
        * creating new instances.
        */
-      static sptr make(bool debug, bool nwk_dev_type, int suc_id, int mac_addr);
+      static sptr make(bool debug, bool nwk_dev_type, int suc_id, int mac_addr,
+                       int fft_len);
     };
 
   } // namespace ieee802_15_4
