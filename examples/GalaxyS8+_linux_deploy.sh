@@ -36,6 +36,7 @@ sudo ldconfig
 cd ~
 echo "Building gr-ieee802-15-4 with $NTHREADS threads..."
 cd gr-ieee802-15-4
+git checkout shcs_mac_demo
 mkdir build
 cd build
 cmake ../
