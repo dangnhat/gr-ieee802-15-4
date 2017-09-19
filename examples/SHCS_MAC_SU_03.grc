@@ -93,7 +93,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 668)</value>
+      <value>(280, 668)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -120,7 +120,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 732)</value>
+      <value>(280, 732)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -147,7 +147,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 796)</value>
+      <value>(280, 796)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -330,7 +330,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(304, 204)</value>
+      <value>(304, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -346,7 +346,7 @@
     </param>
     <param>
       <key>msg</key>
-      <value>pmt.intern("1.0 Hello World!\n")</value>
+      <value>pmt.intern("1.0 Hello from SU03\n")</value>
     </param>
     <param>
       <key>minoutbuf</key>
@@ -758,7 +758,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(568, 368)</value>
+      <value>(568, 392)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3157,7 +3157,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 552)</value>
+      <value>(280, 552)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3322,13 +3322,13 @@
     <source_block_id>blocks_message_strobe_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>strobe</source_key>
-    <sink_key>rucin</sink_key>
+    <sink_key>bcin</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_socket_pdu_0_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>pdus</source_key>
-    <sink_key>rucin</sink_key>
+    <sink_key>bcin</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_stream_to_vector_0</source_block_id>
@@ -3387,7 +3387,7 @@
   <connection>
     <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
     <sink_block_id>blocks_socket_pdu_0_0</sink_block_id>
-    <source_key>rucout</source_key>
+    <source_key>bcout</source_key>
     <sink_key>pdus</sink_key>
   </connection>
   <connection>

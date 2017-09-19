@@ -38,7 +38,7 @@
     </param>
     <param>
       <key>generate_options</key>
-      <value>qt_gui</value>
+      <value>no_gui</value>
     </param>
     <param>
       <key>hier_block_src_path</key>
@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>SUCoordinator</value>
+      <value>SUC</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -719,7 +719,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[0,10]</value>
+      <value>[1,00]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -786,7 +786,7 @@
     </param>
     <param>
       <key>suc_id</key>
-      <value>101</value>
+      <value>10</value>
     </param>
   </block>
   <block>
