@@ -7,10 +7,10 @@
 # Install dependencies:
 DEPS="gnuradio swig pkgconf usbutils libuhd* libusb-dev"
 echo "Install $DEP"
-sudo apt-get install git gnuradio swig pkgconf usbutils libuhd* libusb-dev
+sudo apt-get install git gnuradio swig pkgconf usbutils libuhd* libusb-dev cmake
 
 # Setup udev rules for USRPs
-UHD_UDEV_LOC=usr/lib/uhd/utils
+UHD_UDEV_LOC=/usr/lib/uhd/utils
 
 echo "Setup udev rules for USRPs..."
 sudo cp $UHD_UDEV_LOC/uhd-usrp.rules /etc/udev/rules.d/
