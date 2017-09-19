@@ -30,7 +30,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1008, 116)</value>
+      <value>(8, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -136,14 +136,10 @@
     </param>
   </block>
   <block>
-    <key>variable_qtgui_range</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>0.75</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -151,11 +147,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1144, 8)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
+      <value>(296, 812)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -166,47 +158,15 @@
       <value>rx_gain</value>
     </param>
     <param>
-      <key>label</key>
-      <value></value>
-    </param>
-    <param>
-      <key>min_len</key>
-      <value>200</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
-    </param>
-    <param>
-      <key>start</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>step</key>
-      <value>0.01</value>
-    </param>
-    <param>
-      <key>stop</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rangeType</key>
-      <value>float</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>value</key>
+      <value>0.75</value>
     </param>
   </block>
   <block>
-    <key>variable_qtgui_range</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>0.75</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -214,11 +174,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1008, 8)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
+      <value>(872, 668)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -229,36 +185,8 @@
       <value>tx_gain</value>
     </param>
     <param>
-      <key>label</key>
-      <value></value>
-    </param>
-    <param>
-      <key>min_len</key>
-      <value>200</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
-    </param>
-    <param>
-      <key>start</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>step</key>
-      <value>0.01</value>
-    </param>
-    <param>
-      <key>stop</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rangeType</key>
-      <value>float</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>value</key>
+      <value>0.75</value>
     </param>
   </block>
   <block>
@@ -963,7 +891,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>0</value>
     </param>
     <param>
       <key>fftsize</key>
@@ -971,7 +899,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 696)</value>
+      <value>(872, 764)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1894,7 +1822,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 528)</value>
+      <value>(872, 524)</value>
     </param>
     <param>
       <key>_rotation</key>

@@ -30,7 +30,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1008, 116)</value>
+      <value>(8, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -93,7 +93,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 676)</value>
+      <value>(296, 668)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -120,7 +120,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 740)</value>
+      <value>(296, 732)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -136,14 +136,10 @@
     </param>
   </block>
   <block>
-    <key>variable_qtgui_range</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>0.75</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -151,11 +147,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 808)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
+      <value>(296, 796)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -166,47 +158,15 @@
       <value>rx_gain</value>
     </param>
     <param>
-      <key>label</key>
-      <value></value>
-    </param>
-    <param>
-      <key>min_len</key>
-      <value>200</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
-    </param>
-    <param>
-      <key>start</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>step</key>
-      <value>0.01</value>
-    </param>
-    <param>
-      <key>stop</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rangeType</key>
-      <value>float</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>value</key>
+      <value>0.75</value>
     </param>
   </block>
   <block>
-    <key>variable_qtgui_range</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>0.75</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -214,11 +174,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1080, 552)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
+      <value>(896, 668)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -229,36 +185,8 @@
       <value>tx_gain</value>
     </param>
     <param>
-      <key>label</key>
-      <value></value>
-    </param>
-    <param>
-      <key>min_len</key>
-      <value>200</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
-    </param>
-    <param>
-      <key>start</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>step</key>
-      <value>0.01</value>
-    </param>
-    <param>
-      <key>stop</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rangeType</key>
-      <value>float</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>value</key>
+      <value>0.75</value>
     </param>
   </block>
   <block>
@@ -791,7 +719,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[23,42]</value>
+      <value>[0,10]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -963,7 +891,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>0</value>
     </param>
     <param>
       <key>fftsize</key>
@@ -971,7 +899,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 692)</value>
+      <value>(896, 820)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1882,7 +1810,7 @@
     </param>
     <param>
       <key>dev_addr</key>
-      <value>device_serial</value>
+      <value></value>
     </param>
     <param>
       <key>dev_args</key>
@@ -1894,7 +1822,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 524)</value>
+      <value>(896, 528)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3217,7 +3145,7 @@
     </param>
     <param>
       <key>dev_addr</key>
-      <value>device_serial</value>
+      <value></value>
     </param>
     <param>
       <key>dev_args</key>
@@ -3229,7 +3157,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 544)</value>
+      <value>(296, 552)</value>
     </param>
     <param>
       <key>_rotation</key>
