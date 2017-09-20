@@ -5,11 +5,11 @@
 # https://github.com/dangnhat/gr-ieee802-15-4
 
 # Install dependencies:
-DEPS="gnuradio swig pkgconf usbutils libuhd* libusb-dev"
+DEPS="git gnuradio swig pkgconf usbutils libuhd* libusb-dev cmake"
 echo
 echo
-echo "Install $DEP"
-sudo apt-get install git gnuradio swig pkgconf usbutils libuhd* libusb-dev cmake
+echo "Installing $DEPS"
+sudo apt-get install $DEPS
 
 # Setup udev rules for USRPs
 UHD_UDEV_LOC=/usr/lib/uhd/utils
@@ -22,7 +22,7 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 
 # Build gr-foo and gr-ieee802-15-4
-NTHREADS=8
+NTHREADS=4
 
 echo
 echo
