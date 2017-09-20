@@ -20,6 +20,7 @@ echo "Setup udev rules for USRPs..."
 sudo cp $UHD_UDEV_LOC/uhd-usrp.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger
+sudo /usr/lib/uhd/utils/uhd_images_downloader.py
 
 # Build gr-foo and gr-ieee802-15-4
 NTHREADS=1
@@ -54,6 +55,8 @@ cmake ../
 make
 sudo make install
 sudo ldconfig
+cd ../examples
+grcc ieee802_15_4_OQPSK_PHY.grc
 
 # Run gnuradio companion to generate .py files. or use grcc:
 # Usage: grcc: [options] filename
