@@ -448,6 +448,20 @@ namespace gr
       /* Waiting for everything to settle */
       boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
 
+      //TODO: hard-coded SUC_ID for demo
+      switch (d_mac_addr) {
+        case 0x0001:
+        case 0x0002:
+        case 0x0003:
+          d_suc_id = 0x0000;
+          break;
+
+        default:
+          dout << "MAC: Unknown mac address to map with SUC_ID " << d_mac_addr
+              << endl;
+          break;
+      }
+
       /* Bootstrapping */
       su_bootstrapping ();
 
@@ -521,27 +535,41 @@ namespace gr
         switch (d_control_thread_state) {
           case SU_BOOTSTRAPPING:
             /* Store SUC_ID, sensing time, current random seed, time frame start time */
-            time_slot_start =
-                boost::posix_time::microsec_clock::universal_time ();
-            time_slot_start = time_slot_start
-                + boost::posix_time::milliseconds (Ts)
-                - boost::posix_time::milliseconds (Tss)
-                - boost::posix_time::milliseconds (Th)
-                - boost::posix_time::milliseconds (Tb / 2);
+            boost::posix_time::ptime time_slot_start_tmp;
+            uint16_t suc_id_tmp, Tss_tmp;
+            uint32_t rand_seed_tmp;
+
+            time_slot_start_tmp =
+                boost::posix_time::microsec_clock::universal_time ()
+                    + boost::posix_time::milliseconds (Ts)
+                    - boost::posix_time::milliseconds (Tss)
+                    - boost::posix_time::milliseconds (Th)
+                    - boost::posix_time::milliseconds (Tb / 2);
 
             data_index = ieee802154_get_frame_hdr_len (frame_p);
 
             /* Skip superframe, GTS and pending address fields */
             data_index += 4;
 
-            d_suc_id = buffer_to_uint16 (&frame_p[data_index]);
+            suc_id_tmp = buffer_to_uint16 (&frame_p[data_index]);
             data_index += 2;
-            Tss = buffer_to_uint16 (&frame_p[data_index]);
+            Tss_tmp = buffer_to_uint16 (&frame_p[data_index]);
             data_index += 2;
-            current_rand_seed = buffer_to_uint32 (&frame_p[data_index]);
+            rand_seed_tmp = buffer_to_uint32 (&frame_p[data_index]);
             data_index += 4;
 
-            /* update random seed */
+            /* Check predefined SUC_ID */
+            if ((d_suc_id != 0xFFFF) && (suc_id_tmp != d_suc_id)) {
+              dout << "Predefined suc id " << d_suc_id
+                  << " != received suc id, " << suc_id_tmp << " drop beacon! "
+                  << endl;
+            }
+
+            /* update suc id, sensing time, random seed, and time slot start */
+            d_suc_id = suc_id_tmp;
+            Tss = Tss_tmp;
+            time_slot_start = time_slot_start_tmp;
+            current_rand_seed = rand_seed_tmp;
             rng.seed (current_rand_seed);
 
             dout << "Received SUC ID: " << hex << d_suc_id << dec << endl;
@@ -610,8 +638,8 @@ namespace gr
       print_message (frame_p, frame_len);
 
       size_t fcs_len = ieee802154_get_frame_hdr_len (frame_p);
-      pmt::pmt_t mac_payload = pmt::make_blob (
-          (char*) frame_p + fcs_len, frame_len - fcs_len - 2);
+      pmt::pmt_t mac_payload = pmt::make_blob ((char*) frame_p + fcs_len,
+                                               frame_len - fcs_len - 2);
 
       message_port_pub (pmt::mp ("app out"),
                         pmt::cons (pmt::PMT_NIL, mac_payload));

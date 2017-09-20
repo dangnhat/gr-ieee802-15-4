@@ -125,9 +125,9 @@ namespace gr {
        const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
                                         // if needed.
 
-       uint16_t d_suc_id = 0; // just a random number, for now.
+       uint16_t d_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
        uint16_t d_mac_addr = 0; // Short mac address (16 bits).
-       const uint16_t d_broadcast_addr = 0xffff;
+       const uint16_t d_broadcast_addr = 0xFFFF;
        const uint16_t d_coordinator_addr = 0x00;
 
        /* Time frame related variables */
