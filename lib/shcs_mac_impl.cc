@@ -453,7 +453,7 @@ namespace gr
         case 0x0001:
         case 0x0002:
         case 0x0003:
-          d_suc_id = 0x0000;
+          d_suc_id = 0x0010;
           break;
 
         default:
