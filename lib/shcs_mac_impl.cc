@@ -419,7 +419,6 @@ namespace gr
 
       /* Calculate next time_slot_start */
       time_slot_start = time_slot_start + boost::posix_time::milliseconds (Ts);
-
     }
 
     /*------------------------------------------------------------------------*/
