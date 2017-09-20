@@ -413,7 +413,7 @@
     </param>
     <param>
       <key>type</key>
-      <value>"UDP_SERVER"</value>
+      <value>"UDP_CLIENT"</value>
     </param>
   </block>
   <block>

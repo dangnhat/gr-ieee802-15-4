@@ -701,8 +701,8 @@ namespace gr
           if (d_control_thread_state == DATA_TRANSMISSION) {
             /* Transmit data in transmit_queue */
             while (transmit_queue.pop (blob)) {
-//              print_message ((uint8_t*) pmt::blob_data (blob),
-//                             pmt::blob_length (blob));
+              print_message ((uint8_t*) pmt::blob_data (blob),
+                             pmt::blob_length (blob));
               generate_mac ((const uint8_t*) pmt::blob_data (blob),
                             pmt::blob_length (blob));
 //              print_message (d_msg, d_msg_len);

@@ -21,12 +21,19 @@ string addr = "127.0.0.1";
 int port = 52002;
 
 /* Soldier info */
+//string su1_status =
+//    "mid=K05%2E001&sid=12345&sname=Kim&rank=sergeant&position=36.368487%127.359918&wjam=1&gjam=0&gstate=100%3A130%3A150";
+//string su2_status =
+//    "mid=K05%2E002&sid=11234&sname=Hae&rank=officer&position=36.371955%127.365539&wjam=1&gjam=1&gstate=100%3A130%3A150";
+//string su3_status =
+//    "mid=K05%2E003&sid=00121&sname=Park&rank=private&position=36.374028%127.365228&wjam=0&gjam=0&gstate=100%3A130%3A150";
 string su1_status =
-    "mid=K05%2E001&sid=12345&sname=Kim&rank=sergeant&position=36.368487%127.359918&wjam=1&gjam=0&gstate=100%3A130%3A150";
+    "K05%2E001&12345&Kim&sergeant&36.368487%127.359918&1&0&100%3A130%3A150";
 string su2_status =
-    "mid=K05%2E002&sid=11234&sname=Hae&rank=officer&position=36.371955%127.365539&wjam=1&gjam=1&gstate=100%3A130%3A150";
+    "K05%2E002&11234&Hae&officer&36.371955%127.365539&1&1&100%3A130%3A150";
 string su3_status =
-    "mid=K05%2E003&sid=00121&sname=Park&rank=private&position=36.374028%127.365228&wjam=0&gjam=0&gstate=100%3A130%3A150";
+    "K05%2E003&00121&Park&private&36.374028%127.365228&0&0&100%3A130%3A150";
+
 
 int
 main ()
@@ -86,3 +93,4 @@ main ()
 
   return 0;
 }
+
