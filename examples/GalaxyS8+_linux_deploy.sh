@@ -22,7 +22,7 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 
 # Build gr-foo and gr-ieee802-15-4
-NTHREADS=4
+NTHREADS=1
 
 echo
 echo
@@ -38,7 +38,7 @@ cd gr-foo
 mkdir build
 cd build
 cmake ../
-make -j$NTHREAD
+make
 sudo make install
 sudo ldconfig
 
@@ -51,7 +51,7 @@ git checkout shcs_mac_demo
 mkdir build
 cd build
 cmake ../
-make -j$NTHREAD
+make
 sudo make install
 sudo ldconfig
 
