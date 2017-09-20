@@ -15,20 +15,23 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include "restclient-cpp/restclient.h"
 
 using namespace std;
 
 /* UDP server info */
-string control_center_addr = "127.0.0.1";
+string control_center_addr = "127.0.0.1:38888";
 int control_center_port = 52001;
 const uint32_t buffer_len = 256;
 char buffer[buffer_len];
 
 int socket_fd;
 
-void intHandler(int dummy) {
-    close(socket_fd);
-    exit(0);
+void
+intHandler (int dummy)
+{
+  close (socket_fd);
+  exit (0);
 }
 
 int
@@ -37,12 +40,15 @@ main ()
   unsigned int client_addr_len;
   struct sockaddr_in myaddr;
   struct sockaddr_in client_addr;
-  string su_status;
+  string received_status, http_string, mid, sid, sname, rank, position, wjam,
+      gjam, gstate;
+  size_t pos1, pos2;
+  int count;
 
   cout << "This is NGRC project SUC demo application" << endl;
 
   /* Added signal handle for Ctrl-C */
-  signal(SIGINT, intHandler);
+  signal (SIGINT, intHandler);
 
   /* Create a socket */
 
@@ -71,6 +77,54 @@ main ()
     }
 
     cout << "Received: " << buffer << endl;
+    /* Parse data from received string */
+    received_status (buffer);
+    pos1 = received_status.find_first_of ("&");
+    count = 0;
+    while (pos1 != string::npos) {
+      pos2 = received_status.find_first_of ("&", pos1 + 1);
+      if (pos2 == string::npos) {
+        break;
+      }
+
+      switch (count) {
+        case 1:
+          mid = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 2:
+          sid = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 3:
+          sname = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 4:
+          rank = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 5:
+          position = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 6:
+          wjam = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 7:
+          gjam = received_status.substr (pos1, pos2 - pos1);
+          break;
+        case 8:
+          gstate = received_status.substr (pos1, pos2 - pos1);
+          break;
+        default:
+          break;
+      }
+
+      count++;
+      pos1 = pos2;
+    }/* end while */
+
+    http_string = "http://" + control_center_addr + "/node-update.php?mid="
+        + mid + "&sid=" + sid + "&sname=" + sname + "&rank=" + rank
+        + "&position=" + position + "&wjam=" + wjam + "&gjam=" + gjam
+        + "&gstate=" + gstate;
+    cout << http_string << endl;
   }
 
   return 0;

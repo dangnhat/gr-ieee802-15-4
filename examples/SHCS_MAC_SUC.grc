@@ -385,7 +385,7 @@
     </param>
     <param>
       <key>host</key>
-      <value></value>
+      <value>127.0.0.1</value>
     </param>
     <param>
       <key>id</key>
