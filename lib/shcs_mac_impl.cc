@@ -500,7 +500,7 @@ namespace gr
     shcs_mac_impl::mac_in (pmt::pmt_t msg)
     {
       pmt::pmt_t blob;
-      uint8_t* frame_p = (uint8_t*) pmt::blob_data (blob);
+      uint8_t* frame_p = NULL;
       size_t data_index = 0;
 
       boost::posix_time::ptime time_slot_start_tmp;
@@ -531,6 +531,8 @@ namespace gr
       dout << "MAC: correct crc, new packet!" << endl;
 
       /* Beacon packet */
+      frame_p = (uint8_t*) pmt::blob_data (blob);
+
       if ((frame_p[0] & 0x03) == 0) {
         /* Beacon found */
         dout << "MAC: Found a beacon." << endl;
