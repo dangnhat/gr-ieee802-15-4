@@ -40,7 +40,7 @@ main ()
   unsigned int client_addr_len;
   struct sockaddr_in myaddr;
   struct sockaddr_in client_addr;
-  string received_status, http_string, mid, sid, sname, rank, position, wjam,
+  string http_string, mid, sid, sname, rank, position, wjam,
       gjam, gstate;
   size_t pos1, pos2;
   int count;
@@ -78,7 +78,7 @@ main ()
 
     cout << "Received: " << buffer << endl;
     /* Parse data from received string */
-    received_status (buffer);
+    string received_status (buffer);
     pos1 = received_status.find_first_of ("&");
     count = 0;
     while (pos1 != string::npos) {
