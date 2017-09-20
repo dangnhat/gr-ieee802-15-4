@@ -500,6 +500,12 @@ namespace gr
     shcs_mac_impl::mac_in (pmt::pmt_t msg)
     {
       pmt::pmt_t blob;
+      uint8_t* frame_p = (uint8_t*) pmt::blob_data (blob);
+      size_t data_index = 0;
+
+      boost::posix_time::ptime time_slot_start_tmp;
+      uint16_t suc_id_tmp, Tss_tmp;
+      uint32_t rand_seed_tmp;
 
       if (pmt::is_pair (msg)) {
         blob = pmt::cdr (msg);
@@ -524,9 +530,6 @@ namespace gr
 
       dout << "MAC: correct crc, new packet!" << endl;
 
-      uint8_t* frame_p = (uint8_t*) pmt::blob_data (blob);
-      size_t data_index = 0;
-
       /* Beacon packet */
       if ((frame_p[0] & 0x03) == 0) {
         /* Beacon found */
@@ -535,10 +538,6 @@ namespace gr
         switch (d_control_thread_state) {
           case SU_BOOTSTRAPPING:
             /* Store SUC_ID, sensing time, current random seed, time frame start time */
-            boost::posix_time::ptime time_slot_start_tmp;
-            uint16_t suc_id_tmp, Tss_tmp;
-            uint32_t rand_seed_tmp;
-
             time_slot_start_tmp =
                 boost::posix_time::microsec_clock::universal_time ()
                     + boost::posix_time::milliseconds (Ts)
@@ -563,6 +562,7 @@ namespace gr
               dout << "Predefined suc id " << d_suc_id
                   << " != received suc id, " << suc_id_tmp << " drop beacon! "
                   << endl;
+              return;
             }
 
             /* update suc id, sensing time, random seed, and time slot start */
