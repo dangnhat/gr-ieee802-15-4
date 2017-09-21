@@ -33,7 +33,7 @@ string su2_status =
     "&K05%2E001&1111111117&Hae&officer&36.371955%127.365539&1&1&100%3A130%3A150&";
 string su3_status =
     "&K05%2E001&1301482033&Park&private&36.374028%127.365228&0&0&100%3A130%3A150&";
-string su3_status =
+string su4_status =
     "&K05%2E001&1302102032&Young&private&36.374029%127.365225&0&0&100%3A130%3A150&";
 
 
