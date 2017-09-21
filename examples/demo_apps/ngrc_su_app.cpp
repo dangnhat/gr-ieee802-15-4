@@ -28,13 +28,13 @@ int port = 52002;
 //string su3_status =
 //    "mid=K05%2E003&sid=00121&sname=Park&rank=private&position=36.374028%127.365228&wjam=0&gjam=0&gstate=100%3A130%3A150";
 string su1_status =
-    "&K05%2E001&1111111113&Kim&sergeant&36.368487%127.359918&1&0&100%3A130%3A150&";
+    "&K05%2E001&1111111113&Jaeho Ahn&Captine&59%3A80&1&0&100%3A130%3A150&";
 string su2_status =
-    "&K05%2E001&1111111117&Hae&officer&36.371955%127.365539&1&1&100%3A130%3A150&";
+    "&K05%2E001&1111111117&Mondeuk Yoon&Sergeant&59%3A71&1&1&100%3A130%3A150&";
 string su3_status =
-    "&K05%2E001&1301482033&Park&private&36.374028%127.365228&0&0&100%3A130%3A150&";
+    "&K05%2E001&1301381719&Inhan Kang&Sergeant&50%3A55&0&0&100%3A130%3A150&";
 string su4_status =
-    "&K05%2E001&1302102032&Young&private&36.374029%127.365225&0&0&100%3A130%3A150&";
+    "&K05%2E001&1302102032&BonHae Lee&Sergeant&70%3A50&0&0&100%3A130%3A150&";
 
 
 int
