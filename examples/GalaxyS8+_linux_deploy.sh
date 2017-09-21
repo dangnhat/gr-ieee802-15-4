@@ -46,6 +46,16 @@ sudo ldconfig
 cd ~
 echo
 echo
+echo "Building restclient-cpp ..."
+git clone https://github.com/dangnhat/restclient-cpp
+cd restclient-cpp
+./autogen.sh
+./configure
+sudo make install
+
+cd ~
+echo
+echo
 echo "Building gr-ieee802-15-4 with $NTHREADS threads..."
 cd gr-ieee802-15-4
 git checkout shcs_mac_demo
@@ -60,16 +70,6 @@ grcc ieee802_15_4_OQPSK_PHY.grc
 cd demo_apps
 g++ ngrc_su_app.cpp -o su_demo
 g++ ngrc_suc_app.cpp -o suc_demo -L/usr/local/lib/ -lrestclient-cpp
-
-cd ~
-echo
-echo
-echo "Building restclient-cpp ..."
-git clone https://github.com/dangnhat/restclient-cpp
-cd restclient-cpp
-./autogen.sh
-./configure
-sudo make install
 
 # Run gnuradio companion to generate .py files. or use grcc:
 # Usage: grcc: [options] filename
