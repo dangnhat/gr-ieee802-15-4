@@ -20,7 +20,7 @@
 using namespace std;
 
 /* UDP server info */
-string control_center_addr = "127.0.0.1:38888";
+string control_center_addr = "143.248.194.81:38888";
 int control_center_port = 52001;
 const uint32_t buffer_len = 256;
 char buffer[buffer_len];
