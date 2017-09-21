@@ -40,8 +40,7 @@ main ()
   unsigned int client_addr_len;
   struct sockaddr_in myaddr;
   struct sockaddr_in client_addr;
-  string http_string, mid, sid, sname, rank, position, wjam,
-      gjam, gstate;
+  string http_string, mid, sid, sname, rank, position, wjam, gjam, gstate;
   size_t pos1, pos2;
   int count;
 
@@ -72,8 +71,7 @@ main ()
     if (recvfrom (socket_fd, (void *) buffer, buffer_len, 0,
                   (sockaddr *) &client_addr, &client_addr_len) == -1) {
       cout << "recvfrom error." << endl;
-      close (socket_fd);
-      return 0;
+      continue;
     }
 
     cout << "Received: " << buffer << endl;
@@ -88,29 +86,29 @@ main ()
       }
 
       switch (count) {
+        case 0:
+          mid = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
+          break;
         case 1:
-          mid = received_status.substr (pos1, pos2 - pos1);
+          sid = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 2:
-          sid = received_status.substr (pos1, pos2 - pos1);
+          sname = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 3:
-          sname = received_status.substr (pos1, pos2 - pos1);
+          rank = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 4:
-          rank = received_status.substr (pos1, pos2 - pos1);
+          position = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 5:
-          position = received_status.substr (pos1, pos2 - pos1);
+          wjam = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 6:
-          wjam = received_status.substr (pos1, pos2 - pos1);
+          gjam = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         case 7:
-          gjam = received_status.substr (pos1, pos2 - pos1);
-          break;
-        case 8:
-          gstate = received_status.substr (pos1, pos2 - pos1);
+          gstate = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
           break;
         default:
           break;
@@ -124,7 +122,10 @@ main ()
         + mid + "&sid=" + sid + "&sname=" + sname + "&rank=" + rank
         + "&position=" + position + "&wjam=" + wjam + "&gjam=" + gjam
         + "&gstate=" + gstate;
-    cout << http_string << endl;
+    cout << "HTTP GET: " << http_string << endl;
+
+    RestClient::Response r = RestClient::get (http_string);
+    cout << "Respone code: " << r.code << endl;
   }
 
   return 0;
