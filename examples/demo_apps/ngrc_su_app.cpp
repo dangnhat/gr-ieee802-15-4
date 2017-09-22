@@ -13,6 +13,8 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <sstream>
 
 using namespace std;
 
@@ -36,38 +38,75 @@ string su3_status =
 string su4_status =
     "usrp&1302102032&70:50&5&0&100:130:150&";
 
+typedef struct soldier_info {
+    int sid;
+    int gps_lat, gps_long;
+    int wjam, gjam;
+    int gstate1, gstate2, gstate3;
+} soldier_infor_t;
 
-int
-main ()
+const int mov_range = 5;
+const string status_header = "usrp";
+
+int main ()
 {
   int socket_fd, su_id;
   struct sockaddr_in myaddr;
   struct sockaddr_in dest_addr;
-  string su_status;
+  ostringstream su_status;
+  int mov_lat, mov_long;
+
+  /* Soldiers info */
+  soldier_infor_t soldiers[4];
+
+  soldiers[0].sid = 1111111113;
+  soldiers[0].gps_lat = 59;
+  soldiers[0].gps_long = 80;
+  soldiers[0].wjam = 5;
+  soldiers[0].gjam = 0;
+  soldiers[0].gstate1 = 100;
+  soldiers[0].gstate2 = 130;
+  soldiers[0].gstate3 = 150;
+
+  soldiers[1].sid = 1111111117;
+  soldiers[1].gps_lat = 59;
+  soldiers[1].gps_long = 71;
+  soldiers[1].wjam = 5;
+  soldiers[1].gjam = 0;
+  soldiers[1].gstate1 = 100;
+  soldiers[1].gstate2 = 130;
+  soldiers[1].gstate3 = 150;
+
+  soldiers[2].sid = 1301381719;
+  soldiers[2].gps_lat = 50;
+  soldiers[2].gps_long = 55;
+  soldiers[2].wjam = 5;
+  soldiers[2].gjam = 0;
+  soldiers[2].gstate1 = 100;
+  soldiers[2].gstate2 = 130;
+  soldiers[2].gstate3 = 150;
 
   cout << "This is NGRC project SU demo application" << endl;
   cout << "What's SU ID?" << endl;
   cin >> su_id;
-  switch (su_id) {
-    case 1:
-      su_status = su1_status;
-      break;
-    case 2:
-      su_status = su2_status;
-      break;
-    case 3:
-      su_status = su3_status;
-      break;
-    case 4:
-      su_status = su4_status;
-      break;
-  }
-  cout << "SU status string" << endl;
-  cout << su_status << endl;
 
   while (1) {
-    /* Create a socket */
+    /* Random movement */
+    mov_lat = soldiers[su_id-1].gps_lat + rand()%(2*mov_range) - mov_range;
+    mov_long = soldiers[su_id-1].gps_long + rand()%(2*mov_range) - mov_range;
 
+    /* Generate su_status message */
+    /* i.e. "usrp&1111111113&59:90&5&0&100:130:150&" */
+    su_status.clear();
+    su_status.str("");
+    su_status << status_header << "&" << soldiers[su_id-1].sid << "&" << mov_lat
+            << ":" << mov_long << "&"
+            << soldiers[su_id-1].wjam << "&" << soldiers[su_id-1].gjam << "&"
+            << soldiers[su_id-1].gstate1 << ":" << soldiers[su_id-1].gstate2 << ":"
+            << soldiers[su_id-1].gstate3 << "&";
+    cout << "SU status: " << su_status.str() << endl;
+
+    /* Create a socket */
     if ((socket_fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
       cout << "cannot create socket" << endl;
       return 0;
@@ -89,7 +128,7 @@ main ()
     dest_addr.sin_port = htons (port);
 
     cout << "Sending status to Coor" << endl;
-    sendto (socket_fd, su_status.c_str (), su_status.length (), 0,
+    sendto (socket_fd, su_status.str().c_str (), su_status.str().length (), 0,
             (struct sockaddr *) &dest_addr, sizeof(dest_addr));
     close (socket_fd);
 
