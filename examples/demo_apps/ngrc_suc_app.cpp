@@ -19,7 +19,7 @@
 using namespace std;
 
 /* Control center UDP server info */
-string control_center_addr_s = "192.168.5.2";
+string control_center_addr_s = "143.248.194.105";
 int control_center_port = 38888;
 
 /* SUC UDP server info */
