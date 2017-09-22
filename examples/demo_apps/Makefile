@@ -1,9 +1,9 @@
+all: su suc
+
 su: 
 	g++ ngrc_su_app.cpp -o su_demo.out
 suc: 
-	g++ ngrc_suc_app.cpp -o suc_demo.out -L/usr/local/lib/ -lrestclient-cpp
-
-all: su suc
+	g++ ngrc_suc_app.cpp -o suc_demo.out
 	
 clean:
 	rm -f  *.out
