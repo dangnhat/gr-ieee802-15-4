@@ -5,7 +5,7 @@
 # https://github.com/dangnhat/gr-ieee802-15-4
 
 # Install dependencies:
-DEPS="git gnuradio gnuradio-dev swig pkgconf usbutils libuhd* libusb-dev cmake autotools-dev autoconf libcurl4-gnutls-dev libboost-all-dev"
+DEPS="git gnuradio gnuradio-dev swig pkgconf usbutils libuhd* libusb-dev cmake autotools-dev autoconf libboost-all-dev"
 echo
 echo
 echo "Installing $DEPS"
@@ -46,16 +46,6 @@ sudo ldconfig
 cd ~
 echo
 echo
-echo "Building restclient-cpp ..."
-git clone https://github.com/dangnhat/restclient-cpp
-cd restclient-cpp
-./autogen.sh
-./configure
-sudo make install
-
-cd ~
-echo
-echo
 echo "Building gr-ieee802-15-4 with $NTHREADS threads..."
 cd gr-ieee802-15-4
 git checkout shcs_mac_demo
@@ -67,9 +57,6 @@ sudo make install
 sudo ldconfig
 cd ../examples
 grcc ieee802_15_4_OQPSK_PHY.grc
-cd demo_apps
-g++ ngrc_su_app.cpp -o su_demo
-g++ ngrc_suc_app.cpp -o suc_demo -L/usr/local/lib/ -lrestclient-cpp
 
 # Run gnuradio companion to generate .py files. or use grcc:
 # Usage: grcc: [options] filename
