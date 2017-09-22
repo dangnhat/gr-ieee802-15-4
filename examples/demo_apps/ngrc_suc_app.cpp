@@ -15,22 +15,25 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
-#include "restclient-cpp/restclient.h"
 
 using namespace std;
 
-/* UDP server info */
-string control_center_addr = "192.168.5.2:38888";
-int control_center_port = 52001;
+/* Control center UDP server info */
+string control_center_addr_s = "192.168.5.2";
+int control_center_port = 38888;
+
+/* SUC UDP server info */
+int suc_udp_server_port = 52001;
 const uint32_t buffer_len = 256;
 char buffer[buffer_len];
 
-int socket_fd;
+int suc_socket_fd, control_center_sock_fd;
 
 void
 intHandler (int dummy)
 {
-  close (socket_fd);
+  close (suc_socket_fd);
+  close (control_center_sock_fd);
   exit (0);
 }
 
@@ -38,20 +41,17 @@ int
 main ()
 {
   unsigned int client_addr_len;
-  struct sockaddr_in myaddr;
-  struct sockaddr_in client_addr;
-  string http_string, mid, sid, sname, rank, position, wjam, gjam, gstate;
-  size_t pos1, pos2;
-  int count;
+  struct sockaddr_in myaddr, client_addr;
+  struct sockaddr_in control_center_addr;
+  int received_buf_len;
 
   cout << "This is NGRC project SUC demo application" << endl;
 
   /* Added signal handle for Ctrl-C */
   signal (SIGINT, intHandler);
 
-  /* Create a socket */
-
-  if ((socket_fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+  /* Create SUC UDP server socket */
+  if ((suc_socket_fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
     cout << "cannot create socket" << endl;
     return 0;
   }
@@ -59,73 +59,49 @@ main ()
   memset ((char *) &myaddr, 0, sizeof(myaddr));
   myaddr.sin_family = AF_INET;
   myaddr.sin_addr.s_addr = htonl (INADDR_ANY);
-  myaddr.sin_port = htons (control_center_port);
+  myaddr.sin_port = htons (suc_udp_server_port);
 
-  if (bind (socket_fd, (struct sockaddr *) &myaddr, sizeof(myaddr)) < 0) {
+  if (bind (suc_socket_fd, (struct sockaddr *) &myaddr, sizeof(myaddr)) < 0) {
     cout << "bind failed" << endl;
     return 0;
   }
 
+  /* Create to control center UDP socket */
+  if ((control_center_sock_fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+    cout << "cannot create socket" << endl;
+    return 0;
+  }
+
+  memset ((char *) &myaddr, 0, sizeof(myaddr));
+  myaddr.sin_family = AF_INET;
+  myaddr.sin_addr.s_addr = htonl (INADDR_ANY);
+  myaddr.sin_port = htons (0);
+
+  if (bind (control_center_sock_fd, (struct sockaddr *) &myaddr, sizeof(myaddr)) < 0) {
+    cout << "bind failed" << endl;
+    return 0;
+  }
+
+  /* Wait for message from SUs and forward them to control center */
   while (1) {
     /* Waiting for messages */
-    if (recvfrom (socket_fd, (void *) buffer, buffer_len, 0,
-                  (sockaddr *) &client_addr, &client_addr_len) == -1) {
+	received_buf_len = recvfrom (suc_socket_fd, (void *) buffer, buffer_len, 0,
+            (sockaddr *) &client_addr, &client_addr_len);
+    if (received_buf_len == -1) {
       cout << "recvfrom error." << endl;
       continue;
     }
 
     cout << "Received: " << buffer << endl;
-    /* Parse data from received string */
-    string received_status (buffer);
-    pos1 = received_status.find_first_of ("&");
-    count = 0;
-    while (pos1 != string::npos) {
-      pos2 = received_status.find_first_of ("&", pos1 + 1);
-      if (pos2 == string::npos) {
-        break;
-      }
 
-      switch (count) {
-        case 0:
-          mid = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 1:
-          sid = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 2:
-          sname = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 3:
-          rank = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 4:
-          position = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 5:
-          wjam = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 6:
-          gjam = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        case 7:
-          gstate = received_status.substr (pos1 + 1, pos2 - pos1 - 1);
-          break;
-        default:
-          break;
-      }
+    /* Forward to control center server */
+    control_center_addr.sin_family = AF_INET;
+    inet_aton (control_center_addr_s.c_str (), &control_center_addr.sin_addr);
+    control_center_addr.sin_port = htons (control_center_port);
 
-      count++;
-      pos1 = pos2;
-    }/* end while */
-
-    http_string = "http://" + control_center_addr + "/node-update.php?mid="
-        + mid + "&sid=" + sid + "&sname=" + sname + "&rank=" + rank
-        + "&position=" + position + "&wjam=" + wjam + "&gjam=" + gjam
-        + "&gstate=" + gstate;
-    cout << "HTTP GET: " << http_string << endl;
-
-    RestClient::Response r = RestClient::get (http_string);
-    cout << "Respone code: " << r.code << endl;
+    cout << "Forwarding to control center" << endl;
+    sendto (control_center_sock_fd, buffer, received_buf_len, 0,
+            (struct sockaddr *) &control_center_addr, sizeof(control_center_addr));
   }
 
   return 0;
