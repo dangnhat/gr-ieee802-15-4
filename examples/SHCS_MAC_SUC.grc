@@ -93,7 +93,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 668)</value>
+      <value>(296, 732)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -120,7 +120,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 732)</value>
+      <value>(296, 796)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -147,7 +147,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 796)</value>
+      <value>(296, 860)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -160,6 +160,33 @@
     <param>
       <key>value</key>
       <value>0.75</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(296, 668)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>samp_rate</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>4e6</value>
     </param>
   </block>
   <block>
@@ -1162,7 +1189,7 @@
     </param>
     <param>
       <key>bw0</key>
-      <value>2e6</value>
+      <value>0</value>
     </param>
     <param>
       <key>center_freq0</key>
@@ -1822,7 +1849,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 528)</value>
+      <value>(896, 536)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1942,7 +1969,7 @@
     </param>
     <param>
       <key>samp_rate</key>
-      <value>4000000</value>
+      <value>samp_rate</value>
     </param>
     <param>
       <key>hide_cmd_port</key>
@@ -1981,11 +2008,11 @@
     </param>
     <param>
       <key>ant0</key>
-      <value>RX2</value>
+      <value>TX/RX</value>
     </param>
     <param>
       <key>bw0</key>
-      <value>2e6</value>
+      <value>0</value>
     </param>
     <param>
       <key>center_freq0</key>
@@ -3157,7 +3184,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(296, 552)</value>
+      <value>(296, 560)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3285,7 +3312,7 @@
     </param>
     <param>
       <key>samp_rate</key>
-      <value>4000000</value>
+      <value>samp_rate</value>
     </param>
     <param>
       <key>hide_cmd_port</key>
