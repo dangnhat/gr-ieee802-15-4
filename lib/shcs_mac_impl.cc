@@ -331,7 +331,9 @@ namespace gr
       }
       else {
         /* SU: wait for beacon */
-        is_beacon_received = false;
+        //is_beacon_received = false;
+        // TODO: hard-coded for demo, always assume that we have received a beaoon.
+        is_beacon_received = true;
         d_control_thread_state = BEACON;
       }
     }
