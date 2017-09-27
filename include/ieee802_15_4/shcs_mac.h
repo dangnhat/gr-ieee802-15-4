@@ -27,12 +27,6 @@
 
 namespace gr {
   namespace ieee802_15_4 {
-
-    enum NWK_TYPE {
-      SUC = true,
-      SU = false
-    };
-
     /*!
      * \brief <+description of block+>
      * \ingroup ieee802_15_4

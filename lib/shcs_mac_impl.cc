@@ -340,7 +340,7 @@ namespace gr
     void
     shcs_mac_impl::reporting_duration (void)
     {
-      //TODO
+      //TODO: no need for now.
 
       boost::posix_time::ptime time;
       time = boost::posix_time::microsec_clock::universal_time ();
@@ -514,6 +514,13 @@ namespace gr
         assert(false);
       }
 
+      /* Take timestamp */
+      time_slot_start_tmp = boost::posix_time::microsec_clock::universal_time ()
+          + boost::posix_time::milliseconds (Ts)
+          - boost::posix_time::milliseconds (Tss)
+          - boost::posix_time::milliseconds (Th)
+          - boost::posix_time::milliseconds (Tb / 2);
+
       size_t frame_len = pmt::blob_length (blob);
       if (frame_len < 11) {
         dout << "MAC: frame too short. Dropping!" << endl;
@@ -540,13 +547,6 @@ namespace gr
         switch (d_control_thread_state) {
           case SU_BOOTSTRAPPING:
             /* Store SUC_ID, sensing time, current random seed, time frame start time */
-            time_slot_start_tmp =
-                boost::posix_time::microsec_clock::universal_time ()
-                    + boost::posix_time::milliseconds (Ts)
-                    - boost::posix_time::milliseconds (Tss)
-                    - boost::posix_time::milliseconds (Th)
-                    - boost::posix_time::milliseconds (Tb / 2);
-
             data_index = ieee802154_get_frame_hdr_len (frame_p);
 
             /* Skip superframe, GTS and pending address fields */
@@ -573,6 +573,7 @@ namespace gr
             time_slot_start = time_slot_start_tmp;
             current_rand_seed = rand_seed_tmp;
             rng.seed (current_rand_seed);
+            d_su_connected = true;
 
             dout << "Received SUC ID: " << hex << d_suc_id << dec << endl;
             dout << "Received Tss: " << Tss << endl;
@@ -595,9 +596,13 @@ namespace gr
               uint16_t recv_suc_id = buffer_to_uint16 (&frame_p[data_index]);
 
               if (d_suc_id == recv_suc_id) {
-                dout << "MAC: Beacon state. => is_beacon_received = true"
-                    << endl;
+                time_slot_start = time_slot_start_tmp;
                 is_beacon_received = true;
+
+                dout << "MAC: Beacon state. => is_beacon_received = true."
+                    << endl;
+                dout << "Recalculate time_slot_start: " << time_slot_start
+                    << endl;
               }
             }
 
@@ -670,6 +675,12 @@ namespace gr
 
       dout << "MAC: received new message from APP of length "
           << pmt::blob_length (blob) << endl;
+
+      /* If SU is not connected, drop all packets */
+      if (d_nwk_dev_type == SU && !d_su_connected) {
+        dout << "MAC: SU is not connected, drop packet!" << endl;
+        return;
+      }
 
       /* Push to transmit queue */
 //      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));

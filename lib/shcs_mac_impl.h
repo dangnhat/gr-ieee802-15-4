@@ -27,6 +27,10 @@
 
 namespace gr {
   namespace ieee802_15_4 {
+    enum NWK_TYPE {
+      SUC = true,
+      SU = false
+    };
 
     enum control_thread_state_e {
       NULL_STATE,
@@ -158,6 +162,7 @@ namespace gr {
        boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
        const long unsigned int d_transmit_queue_size = 128;
        boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue{d_transmit_queue_size};
+       bool d_su_connected = false;
 
        /**
         * @brief   Control thread for Coordinator.
