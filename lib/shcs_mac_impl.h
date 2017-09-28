@@ -133,6 +133,7 @@ namespace gr {
        uint16_t d_mac_addr = 0; // Short mac address (16 bits).
        const uint16_t d_broadcast_addr = 0xFFFF;
        const uint16_t d_coordinator_addr = 0x00;
+       uint16_t d_dest_addr = 0x00;
 
        /* Time frame related variables */
        boost::random::minstd_rand rng;

@@ -464,6 +464,18 @@ namespace gr
           break;
       }
 
+      //TODO: hard-coded destination address to coordinator and SUR address */
+      switch (d_mac_addr) {
+        case 0x0002:
+        case 0x0003:
+          d_dest_addr = 0x0001; /* to SUR */
+          break;
+
+        default:
+          d_dest_addr = d_coordinator_addr; /* to SUC */
+          break;
+      }
+
       /* Bootstrapping */
       su_bootstrapping ();
 
@@ -642,6 +654,20 @@ namespace gr
         return;
       }
 
+      /* TODO: hard-coded SUR to forward every received packet to SUC */
+      if (d_mac_addr == 0x0001) {
+        dout << "MAC: forward packet to SUC" << endl;
+        print_message (frame_p, frame_len);
+
+        if (!transmit_queue.push (blob)) {
+          dout << "MAC: push packet to transmit_queue failed." << endl;
+        }
+        else {
+          /* Wake transmit_thread up */
+          transmit_thread_ptr->interrupt ();
+        }
+      }
+
       /* Forward to APP layer */
       dout << "MAC: forward packet to APP layer." << endl;
       print_message (frame_p, frame_len);
@@ -758,10 +784,10 @@ namespace gr
       d_msg_len = 0;
       le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
-      //TODO: hard-coded destination address to coordinator address */
+      //TODO: hard-coded destination address to coordinator and SUR address */
       if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &d_mac_addr, 2,
-                                                 (uint8_t*) &d_coordinator_addr,
-                                                 2, pan_id_le, pan_id_le, flags,
+                                                 (uint8_t*) &d_dest_addr, 2,
+                                                 pan_id_le, pan_id_le, flags,
                                                  d_seq_nr++)) == 0) {
         dout << "MAC: header error." << endl;
       }
