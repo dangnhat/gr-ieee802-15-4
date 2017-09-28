@@ -666,6 +666,8 @@ namespace gr
           /* Wake transmit_thread up */
           transmit_thread_ptr->interrupt ();
         }
+
+        return;
       }
 
       /* Forward to APP layer */
