@@ -207,14 +207,22 @@ public:
   void
   reporting_thread_func (void)
   {
+    int num_packet_errors_prev = 0, num_packet_received_prev = 0, count = 0;
+
     while (1) {
       /* Sleep for 1s  */
       boost::this_thread::sleep_for (boost::chrono::milliseconds (1000));
 
       /* Reporting */
-      std::cout << "MAC: Reports: (e) " << d_num_packet_errors << " (r) "
-          << d_num_packets_received << " (er) "
-          << float (d_num_packet_errors) / d_num_packets_received << std::endl;
+      std::cout << "MAC: Reports: " << count << ". (e) "
+          << d_num_packet_errors - num_packet_errors_prev << " (r) "
+          << d_num_packets_received - num_packet_received_prev << " (er) "
+          << float (d_num_packet_errors - num_packet_errors_prev)
+              / d_num_packets_received - num_packet_received_prev << std::endl;
+
+      num_packet_errors_prev = d_num_packet_errors;
+      num_packet_received_prev = d_num_packets_received;
+      count++;
     }
   }
 
