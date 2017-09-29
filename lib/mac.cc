@@ -218,7 +218,7 @@ public:
           << d_num_packet_errors - num_packet_errors_prev << " (r) "
           << d_num_packets_received - num_packet_received_prev << " (er) "
           << float (d_num_packet_errors - num_packet_errors_prev)
-              / d_num_packets_received - num_packet_received_prev << std::endl;
+              / (d_num_packets_received - num_packet_received_prev) << std::endl;
 
       num_packet_errors_prev = d_num_packet_errors;
       num_packet_received_prev = d_num_packets_received;
