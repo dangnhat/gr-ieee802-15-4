@@ -140,8 +140,11 @@ namespace gr
       uint8_t d_mac_addr[2] = {0x0, 0x0};
 
       /* Time frame related variables */
+      boost::random::mt19937 seed_gen;
       boost::random::minstd_rand rng;
-      uint32_t current_rand_seed = 0;
+      uint32_t current_rand_seed;
+      boost::random::minstd_rand rng2; /* rng2, and current_rand_seed2 are for SUR only */
+      uint32_t current_rand_seed2;
       boost::posix_time::ptime time_slot_start;
 
       /* Channel hopping */

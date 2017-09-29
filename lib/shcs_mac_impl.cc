@@ -445,6 +445,11 @@ shcs_mac_impl::suc_control_thread (void)
 {
   dout << "Coordinator control thread created." << endl;
 
+  /* Seed RNGs */
+  uint32_t seed = seed_gen();
+  rng.seed(seed);
+  dout << "RNG1 seed: " << seed << endl; ;
+
   /* Waiting for everything to settle */
   boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
 
@@ -867,7 +872,7 @@ shcs_mac_impl::buffer_to_uint16 (uint8_t * buffer)
 {
   uint16_t ret_val;
 
-  ret_val = (*buffer) | (*(buffer + 1) << 8);
+  ret_val = (*buffer + 1) | (*(buffer) << 8);
 
   return ret_val;
 }
@@ -878,8 +883,8 @@ shcs_mac_impl::buffer_to_uint32 (uint8_t * buffer)
 {
   uint32_t ret_val;
 
-  ret_val = (*buffer) | (*(buffer + 1) << 8) | (*(buffer + 2) << 16)
-      | (*(buffer + 3) << 24);
+  ret_val = (*buffer + 3) | (*(buffer + 2) << 8) | (*(buffer + 1) << 16)
+      | (*(buffer) << 24);
 
   return ret_val;
 }
@@ -888,18 +893,18 @@ shcs_mac_impl::buffer_to_uint32 (uint8_t * buffer)
 void
 shcs_mac_impl::uint16_to_buffer (uint16_t data, uint8_t* buffer)
 {
-  *buffer = (uint8_t) data;
-  *(++buffer) = (uint8_t) (data >> 8);
+  *buffer = (uint8_t) (data >> 8);
+  *(++buffer) = (uint8_t) (data);
 }
 
 /*----------------------------------------------------------------------------*/
 void
 shcs_mac_impl::uint32_to_buffer (uint32_t data, uint8_t* buffer)
 {
-  *buffer = (uint8_t) data;
-  *(++buffer) = (uint8_t) (data >> 8);
+  *buffer = (uint8_t) (data >> 24);
   *(++buffer) = (uint8_t) (data >> 16);
-  *(++buffer) = (uint8_t) (data >> 24);
+  *(++buffer) = (uint8_t) (data >> 8);
+  *(++buffer) = (uint8_t) (data);
 }
 
 /*----------------------------------------------------------------------------*/
