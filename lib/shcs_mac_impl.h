@@ -145,14 +145,14 @@ namespace gr
       uint8_t d_mac_addr[2] = {0x0, 0x0};
 
       /* SUR state */
-      bool sur_state = IN_PARENT_NWK;
+      bool d_sur_state = IN_PARENT_NWK;
 
       /* Time frame related variables */
       boost::random::mt19937 seed_gen;
       boost::random::minstd_rand rng;
       uint32_t current_rand_seed;
-      boost::random::minstd_rand rng2; /* rng2, and current_rand_seed2 are for SUR only */
-      uint32_t current_rand_seed2;
+      boost::random::minstd_rand rng_local; /* rng_local, and current_rand_seed_local are for SUR only */
+      uint32_t current_rand_seed_local;
       boost::posix_time::ptime time_slot_start;
 
       /* Channel hopping */
@@ -183,8 +183,8 @@ namespace gr
       bool d_su_connected = false;
 
       /* For SUR only */
-      boost::shared_ptr<gr::thread::thread> transmit_thread2_ptr;
-      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue2 {
+      boost::shared_ptr<gr::thread::thread> transmit_thread_local_ptr;
+      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue_local {
           d_transmit_queue_size };
 
       /* Reporting thread */
@@ -217,10 +217,10 @@ namespace gr
       transmit_thread (void);
 
       /**
-       * @brief   Transmission thread (for SUR).
+       * @brief   Transmission thread in local network (for SUR).
        */
       void
-      transmit_thread2 (void);
+      transmit_thread_local (void);
 
       /**
        * @brief   Handle package from PHY layer and forward processed package
