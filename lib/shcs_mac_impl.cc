@@ -325,12 +325,16 @@ shcs_mac_impl::beacon_duration (void)
 
       /* Prepare the beacon payload */
       uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
+      /* Test */
+      dout << "Test: suc id " << buffer_to_uint16(&d_msg[d_msg_len]) << endl;
       d_msg_len += 2;
 
       uint16_to_buffer (Tss, &d_msg[d_msg_len]);
+      dout << "Test: Tss " << buffer_to_uint16(&d_msg[d_msg_len]) << endl;
       d_msg_len += 2;
 
       uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
+      dout << "Test: rand seed " << current_rand_seed << ", " << buffer_to_uint32(&d_msg[d_msg_len]) << endl;
       d_msg_len += 4;
 
       /* Calculate FCS */
@@ -872,7 +876,7 @@ shcs_mac_impl::buffer_to_uint16 (uint8_t * buffer)
 {
   uint16_t ret_val;
 
-  ret_val = (*buffer + 1) | (*(buffer) << 8);
+  ret_val = (*(buffer + 1)) | (*(buffer) << 8);
 
   return ret_val;
 }
@@ -883,7 +887,7 @@ shcs_mac_impl::buffer_to_uint32 (uint8_t * buffer)
 {
   uint32_t ret_val;
 
-  ret_val = (*buffer + 3) | (*(buffer + 2) << 8) | (*(buffer + 1) << 16)
+  ret_val = (*(buffer + 3)) | (*(buffer + 2) << 8) | (*(buffer + 1) << 16)
       | (*(buffer) << 24);
 
   return ret_val;
