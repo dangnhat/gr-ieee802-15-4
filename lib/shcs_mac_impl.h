@@ -122,10 +122,10 @@ namespace gr
       int d_nwk_dev_type;
 
       /* wireless channel configuration */
-      static const int num_of_channels = 3; // channel 24 -> 26: [2.470, ..., 2.480] GHz,
+      static const int num_of_channels = 4; // channel 23 -> 26: [2.465, ..., 2.480] GHz,
       const double channel_step = 5e6; // 5MHz step between 2 channels.
-      const int first_channel_index = 24;
-      double center_freqs[num_of_channels] = { 2.470e9 }; // channel 24: 2.470GHz.
+      const int first_channel_index = 23;
+      double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
