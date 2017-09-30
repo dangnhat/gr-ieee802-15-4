@@ -130,7 +130,7 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
+      const uint32_t Ts = 500; // ms, slot duration (i.e. dwelling time of a channel hop).
       const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 20; // ms, sensing duration.
