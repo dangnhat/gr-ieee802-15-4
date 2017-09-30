@@ -119,7 +119,7 @@ namespace gr
       int d_num_packets_received;
 
       /* network device type */
-      bool d_nwk_dev_type;
+      int d_nwk_dev_type;
 
       /* wireless channel configuration */
       static const int num_of_channels = 3; // channel 24 -> 26: [2.470, ..., 2.480] GHz,
