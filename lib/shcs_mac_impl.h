@@ -45,8 +45,8 @@ namespace gr
     };
 
     enum sur_state_e {
-      IN_LOCAL_NWK,
-      IN_PARENT_NWK,
+      IN_LOCAL_NWK = false,
+      IN_PARENT_NWK = true,
     };
 
     class shcs_mac_impl : public shcs_mac
