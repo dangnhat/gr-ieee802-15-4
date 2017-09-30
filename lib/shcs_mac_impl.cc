@@ -325,16 +325,12 @@ shcs_mac_impl::beacon_duration (void)
 
       /* Prepare the beacon payload */
       uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
-      /* Test */
-      dout << "Test: suc id " << buffer_to_uint16(&d_msg[d_msg_len]) << endl;
       d_msg_len += 2;
 
       uint16_to_buffer (Tss, &d_msg[d_msg_len]);
-      dout << "Test: Tss " << buffer_to_uint16(&d_msg[d_msg_len]) << endl;
       d_msg_len += 2;
 
       uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
-      dout << "Test: rand seed " << current_rand_seed << ", " << buffer_to_uint32(&d_msg[d_msg_len]) << endl;
       d_msg_len += 4;
 
       /* Calculate FCS */
