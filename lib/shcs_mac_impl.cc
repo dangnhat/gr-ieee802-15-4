@@ -663,7 +663,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         break;
 
       case BEACON:
-        if (d_nwk_dev_type == SU) {
+        if (d_nwk_dev_type == SU
+            || (d_nwk_dev_type == SUR && d_sur_state == IN_PARENT_NWK)) {
           /* Check SUC ID */
           data_index = ieee802154_get_frame_hdr_len (frame_p);
 
