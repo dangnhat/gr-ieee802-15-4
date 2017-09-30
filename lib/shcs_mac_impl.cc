@@ -798,7 +798,7 @@ shcs_mac_impl::transmit_thread (void)
       if (d_control_thread_state == DATA_TRANSMISSION) {
         if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
           dout << "SUR: not in parent nwk -> sleep" << endl;
-          return;
+          continue;
         }
 
         /* Transmit data in transmit_queue */
