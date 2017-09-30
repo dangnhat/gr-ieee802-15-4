@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<?grc format='1' created='3.7.12'?>
+<?grc format='1' created='3.7.11'?>
 <flow_graph>
   <timestamp>Mon Dec 15 13:46:31 2014</timestamp>
   <block>
@@ -761,7 +761,7 @@
     <key>ieee802_15_4_shcs_mac</key>
     <param>
       <key>assoc_suc_id</key>
-      <value>1</value>
+      <value>2</value>
     </param>
     <param>
       <key>alias</key>
@@ -813,11 +813,11 @@
     </param>
     <param>
       <key>nwk_dev_type</key>
-      <value>0</value>
+      <value>2</value>
     </param>
     <param>
       <key>suc_id</key>
-      <value>1</value>
+      <value>3</value>
     </param>
   </block>
   <block>

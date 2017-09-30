@@ -44,6 +44,11 @@ namespace gr
       RELOADING
     };
 
+    enum sur_state_e {
+      IN_LOCAL_NWK,
+      IN_PARENT_NWK,
+    };
+
     class shcs_mac_impl : public shcs_mac
     {
     public:
@@ -139,6 +144,9 @@ namespace gr
       const uint8_t d_broadcast_addr[2] = {0xFF, 0xFF};
       uint8_t d_mac_addr[2] = {0x0, 0x0};
 
+      /* SUR state */
+      bool sur_state = IN_PARENT_NWK;
+
       /* Time frame related variables */
       boost::random::mt19937 seed_gen;
       boost::random::minstd_rand rng;
@@ -167,14 +175,21 @@ namespace gr
       uint16_t d_control_thread_state = NULL_STATE;
 
       /* Transmission thread */
-      boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
       const long unsigned int d_transmit_queue_size = 128;
+
+      boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
       boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue {
           d_transmit_queue_size };
       bool d_su_connected = false;
 
+      /* For SUR only */
+      boost::shared_ptr<gr::thread::thread> transmit_thread2_ptr;
+      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue2 {
+          d_transmit_queue_size };
+
       /* Reporting thread */
-      int d_num_bytes_received = 0;
+      const int d_reporting_period = 10000; /* ms */
+      uint32_t d_num_bytes_received = 0;
       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 
       /**
@@ -200,6 +215,12 @@ namespace gr
        */
       void
       transmit_thread (void);
+
+      /**
+       * @brief   Transmission thread (for SUR).
+       */
+      void
+      transmit_thread2 (void);
 
       /**
        * @brief   Handle package from PHY layer and forward processed package

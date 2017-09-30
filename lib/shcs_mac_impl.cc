@@ -141,6 +141,11 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
         << " Hz" << endl;
   }
 
+  /* Create transmission thread */
+  transmit_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+      new gr::thread::thread (
+          boost::bind (&shcs_mac_impl::transmit_thread, this)));
+
   /* Create control threads */
   d_control_thread_state = NULL_STATE;
 
@@ -155,6 +160,11 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
     control_thread_ptr = boost::shared_ptr<gr::thread::thread> (
         new gr::thread::thread (
             boost::bind (&shcs_mac_impl::sur_control_thread, this)));
+
+    /* Create additional transmit thread for Router */
+    transmit_thread2_ptr = boost::shared_ptr<gr::thread::thread> (
+        new gr::thread::thread (
+            boost::bind (&shcs_mac_impl::transmit_thread2, this)));
   }
   else {
     /* Create control thread for SU */
@@ -162,11 +172,6 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
         new gr::thread::thread (
             boost::bind (&shcs_mac_impl::su_control_thread, this)));
   }
-
-  /* Create transmission thread */
-  transmit_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-      new gr::thread::thread (
-          boost::bind (&shcs_mac_impl::transmit_thread, this)));
 
   /* Reporting thread */
   reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
@@ -217,13 +222,29 @@ shcs_mac_impl::work (int noutput_items, gr_vector_const_void_star &input_items,
 void
 shcs_mac_impl::channel_hopping (void)
 {
+  uint32_t seed_tmp;
   boost::posix_time::ptime time;
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << endl;
   dout << time << ": Channel hopping" << endl;
 
   current_rand_seed = rng ();
-  current_working_channel = current_rand_seed % num_of_channels;
+  seed_tmp = current_rand_seed;
+
+  if (d_nwk_dev_type == SUR) {
+    dout << "SUR: ";
+    current_rand_seed2 = rng2 ();
+
+    if (sur_state == IN_PARENT_NWK) {
+      dout << "In parent nwk" << endl;
+    }
+    else {
+      dout << "In local nwk" << endl;
+      seed_tmp = current_rand_seed2;
+    }
+  }
+
+  current_working_channel = seed_tmp % num_of_channels;
   dout << scientific;
   dout << "-> new channel: " << current_working_channel + first_channel_index
       << ", " << center_freqs[current_working_channel] << endl;
@@ -280,7 +301,8 @@ shcs_mac_impl::beacon_duration (void)
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << time << ": Beacon duration" << endl;
 
-  if (d_nwk_dev_type == SUC) {
+  if ((d_nwk_dev_type == SUC)
+        || ((d_nwk_dev_type == SUR) && (sur_state == IN_LOCAL_NWK))) {
     /* SUC: Broadcast beacon */
     d_control_thread_state = BEACON;
     is_beacon_received = true; // always true for SUC.
@@ -330,7 +352,13 @@ shcs_mac_impl::beacon_duration (void)
       uint16_to_buffer (Tss, &d_msg[d_msg_len]);
       d_msg_len += 2;
 
-      uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
+      if (d_nwk_dev_type == SUC) {
+        uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
+      }
+      else {
+        /* SUR */
+        uint32_to_buffer (current_rand_seed2, &d_msg[d_msg_len]);
+      }
       d_msg_len += 4;
 
       /* Calculate FCS */
@@ -385,7 +413,13 @@ shcs_mac_impl::data_duration (void)
     dout << "Channel is available: DATA_TRANSMISSION state, " << endl;
 
     /* Wake transmit_thread up */
-    transmit_thread_ptr->interrupt ();
+    if ((d_nwk_dev_type == SUR) && (sur_state == IN_LOCAL_NWK)) {
+      dout << "Wake up transmit thread 2" << endl;
+      transmit_thread2_ptr->interrupt ();
+    }
+    else {
+      transmit_thread_ptr->interrupt ();
+    }
   }
   else {
     d_control_thread_state = NULL_STATE;
@@ -399,6 +433,11 @@ shcs_mac_impl::reload_tasks (void)
 {
   d_control_thread_state = RELOADING;
 
+  /* SUR: switch network */
+  if (d_nwk_dev_type == SUR) {
+    sur_state = !sur_state;
+  }
+
   /* Perform channel hopping */
   tasks_processor::get ().run_at (
       time_slot_start, boost::bind (&shcs_mac_impl::channel_hopping, this));
@@ -409,7 +448,8 @@ shcs_mac_impl::reload_tasks (void)
       boost::bind (&shcs_mac_impl::spectrum_sensing, this));
 
   /* Beacon duration */
-  if (d_nwk_dev_type == SUC) {
+  if ((d_nwk_dev_type == SUC)
+      || ((d_nwk_dev_type == SUR) && (sur_state == IN_LOCAL_NWK))) {
     tasks_processor::get ().run_at (
         time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb / 2),
         boost::bind (&shcs_mac_impl::beacon_duration, this));
@@ -509,6 +549,14 @@ void
 shcs_mac_impl::sur_control_thread (void)
 {
   dout << "SUR control thread created." << endl;
+
+  /* Seed RNGs */
+  uint32_t seed = seed_gen();
+  rng.seed(seed);
+  dout << "RNG1 seed: " << seed << endl;
+  seed = seed_gen();
+  rng2.seed(seed);
+  dout << "RNG2 seed: " << seed << endl;
 
   /* Waiting for everything to settle */
   boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
@@ -702,19 +750,33 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
       << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
-  if (d_nwk_dev_type == SU && !d_su_connected) {
-    dout << "MAC: SU is not connected, drop packet!" << endl;
+  if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR) && !d_su_connected) {
+    dout << "MAC: SU/SUR is not connected, drop packet!" << endl;
     return;
   }
 
   /* Push to transmit queue */
 //      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
-  if (!transmit_queue.push (blob)) {
-    dout << "MAC: push packet to transmit_queue failed." << endl;
+  uint8_t dest_suc_id = ((uint8_t*) pmt::blob_data (blob))[0];
+  if (d_nwk_dev_type == SUR && dest_suc_id == d_assoc_suc_id) {
+    dout << "SUR: push to transmit queue 2, dest: " << dest_suc_id << endl;
+
+    if (!transmit_queue2.push (blob)) {
+      dout << "MAC: push packet to transmit_queue failed." << endl;
+    }
+    else {
+      /* Wake transmit_thread up */
+      transmit_thread2_ptr->interrupt ();
+    }
   }
   else {
-    /* Wake transmit_thread up */
-    transmit_thread_ptr->interrupt ();
+    if (!transmit_queue.push (blob)) {
+      dout << "MAC: push packet to transmit_queue failed." << endl;
+    }
+    else {
+      /* Wake transmit_thread up */
+      transmit_thread_ptr->interrupt ();
+    }
   }
 }
 
@@ -741,7 +803,38 @@ shcs_mac_impl::transmit_thread (void)
                          pmt::blob_length (blob));
           generate_mac ((const uint8_t*) pmt::blob_data (blob),
                         pmt::blob_length (blob));
-//              print_message (d_msg, d_msg_len);
+          message_port_pub (
+              pmt::mp ("pdu out"),
+              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+        }
+      }
+    }
+  }/* end while */
+}
+
+/*------------------------------------------------------------------------*/
+void
+shcs_mac_impl::transmit_thread2 (void)
+{
+  pmt::pmt_t blob;
+
+  dout << "Transmit thread 2 created." << endl;
+
+  while (1) {
+    try {
+      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
+    }
+    catch (boost::thread_interrupted&) {
+      dout << "Transmit_t: Interrupted, woke up." << endl;
+
+      /* Check current control state */
+      if (d_control_thread_state == DATA_TRANSMISSION) {
+        /* Transmit data in transmit_queue */
+        while (transmit_queue2.pop (blob)) {
+          print_message ((uint8_t*) pmt::blob_data (blob),
+                         pmt::blob_length (blob));
+          generate_mac ((const uint8_t*) pmt::blob_data (blob),
+                        pmt::blob_length (blob));
           message_port_pub (
               pmt::mp ("pdu out"),
               pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
