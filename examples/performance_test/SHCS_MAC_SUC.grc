@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<?grc format='1' created='3.7.12'?>
+<?grc format='1' created='3.7.11'?>
 <flow_graph>
   <timestamp>Mon Dec 15 13:46:31 2014</timestamp>
   <block>
@@ -14,7 +14,7 @@
     </param>
     <param>
       <key>category</key>
-      <value>Custom</value>
+      <value>[GRC Hier Blocks]</value>
     </param>
     <param>
       <key>comment</key>
@@ -26,11 +26,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(16, 8)</value>
+      <value>(8, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -38,7 +38,7 @@
     </param>
     <param>
       <key>generate_options</key>
-      <value>qt_gui</value>
+      <value>no_gui</value>
     </param>
     <param>
       <key>hier_block_src_path</key>
@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>transceiver_OQPSK</value>
+      <value>SUC</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -58,7 +58,7 @@
     </param>
     <param>
       <key>realtime_scheduling</key>
-      <value>1</value>
+      <value></value>
     </param>
     <param>
       <key>run_command</key>
@@ -78,18 +78,14 @@
     </param>
     <param>
       <key>title</key>
-      <value>IEEE 802.15.4 Transceiver using OQPSK PHY</value>
+      <value></value>
     </param>
   </block>
   <block>
-    <key>variable_qtgui_chooser</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>2480000000</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -97,11 +93,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1064, 8)</value>
-    </param>
-    <param>
-      <key>gui_hint</key>
-      <value></value>
+      <value>(296, 732)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -109,86 +101,18 @@
     </param>
     <param>
       <key>id</key>
-      <value>freq</value>
-    </param>
-    <param>
-      <key>label0</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label1</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label2</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label3</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label4</key>
-      <value></value>
-    </param>
-    <param>
-      <key>label</key>
-      <value>Channel</value>
-    </param>
-    <param>
-      <key>labels</key>
-      <value>[str(i) for i in range(11, 27)]</value>
-    </param>
-    <param>
-      <key>num_opts</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>option0</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>option1</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>option2</key>
-      <value>2</value>
-    </param>
-    <param>
-      <key>option3</key>
-      <value>3</value>
-    </param>
-    <param>
-      <key>option4</key>
-      <value>4</value>
-    </param>
-    <param>
-      <key>options</key>
-      <value>[1000000 * (2400 + 5 * (i - 10)) for i in range(11, 27)]</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.QVBoxLayout</value>
-    </param>
-    <param>
-      <key>type</key>
-      <value>real</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>combo_box</value>
-    </param>
-  </block>
-  <block>
-    <key>variable_qtgui_range</key>
-    <param>
-      <key>comment</key>
-      <value></value>
+      <value>device_serial</value>
     </param>
     <param>
       <key>value</key>
-      <value>0.75</value>
+      <value>"serial=30F5512"</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
     </param>
     <param>
       <key>_enabled</key>
@@ -196,11 +120,34 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(920, 8)</value>
+      <value>(296, 796)</value>
     </param>
     <param>
-      <key>gui_hint</key>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>initial_center_freq</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>2480e6</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
       <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(296, 860)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -211,47 +158,15 @@
       <value>rx_gain</value>
     </param>
     <param>
-      <key>label</key>
-      <value></value>
-    </param>
-    <param>
-      <key>min_len</key>
-      <value>200</value>
-    </param>
-    <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
-    </param>
-    <param>
-      <key>start</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>step</key>
-      <value>0.01</value>
-    </param>
-    <param>
-      <key>stop</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>rangeType</key>
-      <value>float</value>
-    </param>
-    <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>value</key>
+      <value>0.75</value>
     </param>
   </block>
   <block>
-    <key>variable_qtgui_range</key>
+    <key>variable</key>
     <param>
       <key>comment</key>
       <value></value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>0.75</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -259,11 +174,34 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(776, 8)</value>
+      <value>(296, 668)</value>
     </param>
     <param>
-      <key>gui_hint</key>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>samp_rate</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>4e6</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
       <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(896, 668)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -274,36 +212,78 @@
       <value>tx_gain</value>
     </param>
     <param>
-      <key>label</key>
+      <key>value</key>
+      <value>0.75</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
       <value></value>
     </param>
     <param>
-      <key>min_len</key>
-      <value>200</value>
+      <key>_enabled</key>
+      <value>True</value>
     </param>
     <param>
-      <key>orient</key>
-      <value>Qt.Horizontal</value>
+      <key>_coordinate</key>
+      <value>(48, 252)</value>
     </param>
     <param>
-      <key>start</key>
+      <key>_rotation</key>
       <value>0</value>
     </param>
     <param>
-      <key>step</key>
-      <value>0.01</value>
+      <key>id</key>
+      <value>vector_len</value>
     </param>
     <param>
-      <key>stop</key>
-      <value>1</value>
+      <key>value</key>
+      <value>1024</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_complex_to_mag_squared</key>
+    <param>
+      <key>alias</key>
+      <value></value>
     </param>
     <param>
-      <key>rangeType</key>
-      <value>float</value>
+      <key>comment</key>
+      <value></value>
     </param>
     <param>
-      <key>widget</key>
-      <value>counter_slider</value>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(328, 340)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_complex_to_mag_squared_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>vlen</key>
+      <value>vector_len</value>
     </param>
   </block>
   <block>
@@ -334,7 +314,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(888, 331)</value>
+      <value>(1120, 332)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -373,11 +353,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>0</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(72, 212)</value>
+      <value>(304, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -401,7 +381,7 @@
     </param>
     <param>
       <key>period</key>
-      <value>1000</value>
+      <value>10000</value>
     </param>
   </block>
   <block>
@@ -424,7 +404,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(358, 116)</value>
+      <value>(592, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -432,7 +412,7 @@
     </param>
     <param>
       <key>host</key>
-      <value></value>
+      <value>127.0.0.1</value>
     </param>
     <param>
       <key>id</key>
@@ -460,7 +440,121 @@
     </param>
     <param>
       <key>type</key>
-      <value>"UDP_SERVER"</value>
+      <value>"UDP_CLIENT"</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_stream_to_vector</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 452)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_stream_to_vector_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>complex</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>num_items</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>vlen</key>
+      <value>1</value>
+    </param>
+  </block>
+  <block>
+    <key>fft_vxx</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>fft_size</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>forward</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 312)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>fft_vxx_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>complex</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>nthreads</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>shift</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>window</key>
+      <value>window.blackmanharris(vector_len)</value>
     </param>
   </block>
   <block>
@@ -491,11 +585,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>0</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(376, 587)</value>
+      <value>(608, 672)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -546,7 +640,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(672, 339)</value>
+      <value>(904, 340)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -570,49 +664,6 @@
     </param>
   </block>
   <block>
-    <key>ieee802_15_4_mac</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>debug</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(360, 376)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>180</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>ieee802_15_4_mac_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-  </block>
-  <block>
     <key>ieee802_15_4_oqpsk_phy</key>
     <param>
       <key>alias</key>
@@ -632,7 +683,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(344, 472)</value>
+      <value>(568, 592)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -675,7 +726,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(352, 224)</value>
+      <value>(584, 224)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -695,7 +746,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[23,42]</value>
+      <value>[1,00]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -704,6 +755,65 @@
     <param>
       <key>uc_channels</key>
       <value>[131]</value>
+    </param>
+  </block>
+  <block>
+    <key>ieee802_15_4_shcs_mac</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>debug</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>fft_len</key>
+      <value>vector_len</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(568, 392)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>180</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>ieee802_15_4_shcs_mac_0</value>
+    </param>
+    <param>
+      <key>mac_addr</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>nwk_dev_type</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>suc_id</key>
+      <value>16</value>
     </param>
   </block>
   <block>
@@ -722,7 +832,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(344, 707)</value>
+      <value>(576, 788)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -753,7 +863,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(334, 63)</value>
+      <value>(568, 60)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -784,7 +894,7 @@
     </param>
     <param>
       <key>bw</key>
-      <value>4e6</value>
+      <value>2e6</value>
     </param>
     <param>
       <key>alias</key>
@@ -808,7 +918,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>0</value>
     </param>
     <param>
       <key>fftsize</key>
@@ -816,7 +926,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(688, 556)</value>
+      <value>(896, 820)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1075,7 +1185,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value></value>
+      <value>TX/RX</value>
     </param>
     <param>
       <key>bw0</key>
@@ -1083,7 +1193,7 @@
     </param>
     <param>
       <key>center_freq0</key>
-      <value>freq</value>
+      <value>initial_center_freq</value>
     </param>
     <param>
       <key>norm_gain0</key>
@@ -1735,11 +1845,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(688, 440)</value>
+      <value>(896, 536)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1859,7 +1969,7 @@
     </param>
     <param>
       <key>samp_rate</key>
-      <value>4000000</value>
+      <value>samp_rate</value>
     </param>
     <param>
       <key>hide_cmd_port</key>
@@ -1898,7 +2008,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value></value>
+      <value>RX2</value>
     </param>
     <param>
       <key>bw0</key>
@@ -1906,7 +2016,7 @@
     </param>
     <param>
       <key>center_freq0</key>
-      <value>freq</value>
+      <value>initial_center_freq</value>
     </param>
     <param>
       <key>dc_offs_enb0</key>
@@ -3070,11 +3180,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(56, 448)</value>
+      <value>(296, 560)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3202,7 +3312,7 @@
     </param>
     <param>
       <key>samp_rate</key>
-      <value>4000000</value>
+      <value>samp_rate</value>
     </param>
     <param>
       <key>hide_cmd_port</key>
@@ -3230,6 +3340,12 @@
     </param>
   </block>
   <connection>
+    <source_block_id>blocks_complex_to_mag_squared_0</source_block_id>
+    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
     <source_block_id>blocks_message_strobe_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>strobe</source_key>
@@ -3240,6 +3356,18 @@
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>pdus</source_key>
     <sink_key>bcin</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>blocks_stream_to_vector_0</source_block_id>
+    <sink_block_id>fft_vxx_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>fft_vxx_0</source_block_id>
+    <sink_block_id>blocks_complex_to_mag_squared_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>foo_packet_pad_0</source_block_id>
@@ -3254,24 +3382,6 @@
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>ieee802_15_4_mac_0</source_block_id>
-    <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
-    <source_key>app out</source_key>
-    <sink_key>fromMAC</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>ieee802_15_4_mac_0</source_block_id>
-    <sink_block_id>foo_wireshark_connector_0</sink_block_id>
-    <source_key>pdu out</source_key>
-    <sink_key>in</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>ieee802_15_4_mac_0</source_block_id>
-    <sink_block_id>ieee802_15_4_oqpsk_phy_0</sink_block_id>
-    <source_key>pdu out</source_key>
-    <sink_key>txin</sink_key>
-  </connection>
-  <connection>
     <source_block_id>ieee802_15_4_oqpsk_phy_0</source_block_id>
     <sink_block_id>foo_wireshark_connector_0</sink_block_id>
     <source_key>rxout</source_key>
@@ -3279,7 +3389,7 @@
   </connection>
   <connection>
     <source_block_id>ieee802_15_4_oqpsk_phy_0</source_block_id>
-    <sink_block_id>ieee802_15_4_mac_0</sink_block_id>
+    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
     <source_key>rxout</source_key>
     <sink_key>pdu in</sink_key>
   </connection>
@@ -3309,9 +3419,39 @@
   </connection>
   <connection>
     <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
-    <sink_block_id>ieee802_15_4_mac_0</sink_block_id>
+    <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
     <source_key>toMAC</source_key>
     <sink_key>app in</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ieee802_15_4_shcs_mac_0</source_block_id>
+    <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
+    <source_key>app out</source_key>
+    <sink_key>fromMAC</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ieee802_15_4_shcs_mac_0</source_block_id>
+    <sink_block_id>ieee802_15_4_oqpsk_phy_0</sink_block_id>
+    <source_key>pdu out</source_key>
+    <sink_key>txin</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ieee802_15_4_shcs_mac_0</source_block_id>
+    <sink_block_id>uhd_usrp_sink_0</sink_block_id>
+    <source_key>usrp sink cmd</source_key>
+    <sink_key>command</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ieee802_15_4_shcs_mac_0</source_block_id>
+    <sink_block_id>uhd_usrp_source_0</sink_block_id>
+    <source_key>usrp source cmd</source_key>
+    <sink_key>command</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>uhd_usrp_source_0</source_block_id>
+    <sink_block_id>blocks_stream_to_vector_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>uhd_usrp_source_0</source_block_id>
