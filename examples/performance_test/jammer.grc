@@ -136,7 +136,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>30</value>
+      <value>50</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -262,7 +262,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2480e6</value>
+      <value>2470e6</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -455,7 +455,7 @@
     </param>
     <param>
       <key>ctrlpanel</key>
-      <value>True</value>
+      <value>False</value>
     </param>
     <param>
       <key>affinity</key>
