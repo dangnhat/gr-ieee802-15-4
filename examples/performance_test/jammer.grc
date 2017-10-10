@@ -199,7 +199,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>3e6</value>
+      <value>1e6</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -235,7 +235,7 @@
     </param>
     <param>
       <key>start</key>
-      <value>3e6</value>
+      <value>1e6</value>
     </param>
     <param>
       <key>step</key>
@@ -262,7 +262,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2470e6</value>
+      <value>2465e6</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -298,7 +298,7 @@
     </param>
     <param>
       <key>start</key>
-      <value>2470e6</value>
+      <value>2465e6</value>
     </param>
     <param>
       <key>step</key>
