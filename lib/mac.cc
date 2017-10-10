@@ -209,7 +209,7 @@ public:
   void
   reporting_thread_func (void)
   {
-    int count = 0, d_num_bytes_received = 0;
+    int count = 0;
 
     while (1) {
       d_num_bytes_received = 0;
