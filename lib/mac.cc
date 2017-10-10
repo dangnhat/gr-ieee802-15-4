@@ -218,7 +218,7 @@ public:
       boost::this_thread::sleep_for (boost::chrono::milliseconds (5000));
 
       /* Reporting */
-      std::cout << "MAC: Reports, avg data rate: " << count <<
+      std::cout << "MAC: Reports #" << count << ", avg data rate: " <<
           d_num_bytes_received*8/1024/5 << " kbit/s" << std::endl;
 
       count++;
