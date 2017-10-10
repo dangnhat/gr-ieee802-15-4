@@ -555,6 +555,7 @@ namespace gr
       }
 
       dout << "MAC: correct crc, new packet!" << endl;
+      d_num_bytes_received += frame_len;
 
       /* Beacon packet */
       frame_p = (uint8_t*) pmt::blob_data (blob);
@@ -858,21 +859,18 @@ namespace gr
     void
     shcs_mac_impl::reporting_thread_func (void)
     {
-      int num_packet_errors_prev = 0, num_packet_received_prev = 0, count = 0;
+      int count = 0;
 
       while (1) {
-        /* Sleep for 1s  */
-        boost::this_thread::sleep_for (boost::chrono::milliseconds (1000));
+        d_num_bytes_received = 0;
+
+        /* Sleep for 5s  */
+        boost::this_thread::sleep_for (boost::chrono::milliseconds (5000));
 
         /* Reporting */
-        std::cout << "MAC: Reports: " << count << ". err: "
-            << d_num_packet_errors - num_packet_errors_prev << " recv: "
-            << d_num_packets_received - num_packet_received_prev << " errRate: "
-            << float (d_num_packet_errors - num_packet_errors_prev)
-                / (d_num_packets_received - num_packet_received_prev) << std::endl;
+        std::cout << "MAC: Reports, avg data rate: " << count <<
+            d_num_bytes_received*8/1024/5 << " kbit/s" << std::endl;
 
-        num_packet_errors_prev = d_num_packet_errors;
-        num_packet_received_prev = d_num_packets_received;
         count++;
       }
     }

@@ -166,6 +166,7 @@ namespace gr {
        bool d_su_connected = false;
 
        /* Reporting thread */
+       int d_num_bytes_received = 0;
        boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 
        /**

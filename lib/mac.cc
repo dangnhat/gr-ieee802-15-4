@@ -35,7 +35,8 @@ public:
   mac_impl (bool debug) :
       block ("mac", gr::io_signature::make (0, 0, 0),
              gr::io_signature::make (0, 0, 0)), d_msg_offset (0), d_seq_nr (0), d_debug (
-          debug), d_num_packet_errors (0), d_num_packets_received (0)
+          debug), d_num_packet_errors (0), d_num_packets_received (0), d_num_bytes_received (
+          0)
   {
 
     message_port_register_in (pmt::mp ("app in"));
@@ -84,6 +85,7 @@ public:
       return;
     }
     else {
+      d_num_bytes_received += data_len;
       dout << "MAC: correct crc. Propagate packet to APP layer." << std::endl;
     }
 
@@ -207,21 +209,18 @@ public:
   void
   reporting_thread_func (void)
   {
-    int num_packet_errors_prev = 0, num_packet_received_prev = 0, count = 0;
+    int count = 0, d_num_bytes_received = 0;
 
     while (1) {
-      /* Sleep for 1s  */
-      boost::this_thread::sleep_for (boost::chrono::milliseconds (1000));
+      d_num_bytes_received = 0;
+
+      /* Sleep for 5s  */
+      boost::this_thread::sleep_for (boost::chrono::milliseconds (5000));
 
       /* Reporting */
-      std::cout << "MAC: Reports: " << count << ". err: "
-          << d_num_packet_errors - num_packet_errors_prev << " recv: "
-          << d_num_packets_received - num_packet_received_prev << " errRate: "
-          << float (d_num_packet_errors - num_packet_errors_prev)
-              / (d_num_packets_received - num_packet_received_prev) << std::endl;
+      std::cout << "MAC: Reports, avg data rate: " << count <<
+          d_num_bytes_received*8/1024/5 << " kbit/s" << std::endl;
 
-      num_packet_errors_prev = d_num_packet_errors;
-      num_packet_received_prev = d_num_packets_received;
       count++;
     }
   }
@@ -235,6 +234,7 @@ private:
 
   int d_num_packet_errors;
   int d_num_packets_received;
+  int d_num_bytes_received;
   boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 };
 
