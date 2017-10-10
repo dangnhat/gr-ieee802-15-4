@@ -10,7 +10,7 @@
     </param>
     <param>
       <key>window_size</key>
-      <value>1280, 1024</value>
+      <value></value>
     </param>
     <param>
       <key>category</key>
@@ -26,7 +26,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>SUC</value>
+      <value>SU01</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -105,7 +105,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>"serial=30F5512"</value>
+      <value>"serial=30F551E"</value>
     </param>
   </block>
   <block>
@@ -201,7 +201,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 668)</value>
+      <value>(872, 660)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -263,7 +263,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(328, 340)</value>
+      <value>(320, 340)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -314,7 +314,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1120, 332)</value>
+      <value>(1120, 336)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -353,11 +353,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(304, 212)</value>
+      <value>(320, 213)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -373,7 +373,7 @@
     </param>
     <param>
       <key>msg</key>
-      <value>pmt.intern("Hello World!\n")</value>
+      <value>pmt.intern("1.0 Hello from SU01\n")</value>
     </param>
     <param>
       <key>minoutbuf</key>
@@ -381,7 +381,7 @@
     </param>
     <param>
       <key>period</key>
-      <value>10000</value>
+      <value>1</value>
     </param>
   </block>
   <block>
@@ -412,7 +412,7 @@
     </param>
     <param>
       <key>host</key>
-      <value>127.0.0.1</value>
+      <value></value>
     </param>
     <param>
       <key>id</key>
@@ -432,7 +432,7 @@
     </param>
     <param>
       <key>port</key>
-      <value>52001</value>
+      <value>52002</value>
     </param>
     <param>
       <key>tcp_no_delay</key>
@@ -440,7 +440,7 @@
     </param>
     <param>
       <key>type</key>
-      <value>"UDP_CLIENT"</value>
+      <value>"UDP_SERVER"</value>
     </param>
   </block>
   <block>
@@ -463,7 +463,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(48, 452)</value>
+      <value>(72, 460)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -522,7 +522,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(48, 312)</value>
+      <value>(72, 312)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -640,7 +640,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(904, 340)</value>
+      <value>(904, 344)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -746,7 +746,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[1,00]</value>
+      <value>[1,1]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -773,7 +773,7 @@
     </param>
     <param>
       <key>debug</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -797,7 +797,7 @@
     </param>
     <param>
       <key>mac_addr</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -809,11 +809,11 @@
     </param>
     <param>
       <key>nwk_dev_type</key>
-      <value>True</value>
+      <value>False</value>
     </param>
     <param>
       <key>suc_id</key>
-      <value>16</value>
+      <value>101</value>
     </param>
   </block>
   <block>
@@ -832,7 +832,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(576, 788)</value>
+      <value>(576, 792)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -863,7 +863,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(568, 60)</value>
+      <value>(568, 64)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -922,7 +922,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 820)</value>
+      <value>(872, 764)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1837,7 +1837,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 536)</value>
+      <value>(872, 536)</value>
     </param>
     <param>
       <key>_rotation</key>
