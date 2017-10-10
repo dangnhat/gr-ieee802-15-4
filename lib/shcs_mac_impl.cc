@@ -150,6 +150,11 @@ namespace gr
       transmit_thread_ptr = boost::shared_ptr<gr::thread::thread> (
           new gr::thread::thread (
               boost::bind (&shcs_mac_impl::transmit_thread, this)));
+
+      /* Reporting thread */
+      reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+          new gr::thread::thread (
+              boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
     }
 
     /*------------------------------------------------------------------------*/
@@ -847,6 +852,29 @@ namespace gr
     shcs_mac_impl::get_packet_error_ratio ()
     {
       return float (d_num_packet_errors) / d_num_packets_received;
+    }
+
+    /*------------------------------------------------------------------------*/
+    void
+    shcs_mac_impl::reporting_thread_func (void)
+    {
+      int num_packet_errors_prev = 0, num_packet_received_prev = 0, count = 0;
+
+      while (1) {
+        /* Sleep for 1s  */
+        boost::this_thread::sleep_for (boost::chrono::milliseconds (1000));
+
+        /* Reporting */
+        std::cout << "MAC: Reports: " << count << ". err: "
+            << d_num_packet_errors - num_packet_errors_prev << " recv: "
+            << d_num_packets_received - num_packet_received_prev << " errRate: "
+            << float (d_num_packet_errors - num_packet_errors_prev)
+                / (d_num_packets_received - num_packet_received_prev) << std::endl;
+
+        num_packet_errors_prev = d_num_packet_errors;
+        num_packet_received_prev = d_num_packets_received;
+        count++;
+      }
     }
 
     /*----------------------------------------------------------------------------*/

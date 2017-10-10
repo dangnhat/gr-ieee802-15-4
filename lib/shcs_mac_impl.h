@@ -165,6 +165,9 @@ namespace gr {
        boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue{d_transmit_queue_size};
        bool d_su_connected = false;
 
+       /* Reporting thread */
+       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
+
        /**
         * @brief   Control thread for Coordinator.
         */
@@ -282,6 +285,11 @@ namespace gr {
        * SU will choose another random channel from current channels list.
        */
       void su_bootstrapping(void);
+
+      /**
+       * @brief   Reporting performance every 1s.
+       */
+      void reporting_thread_func (void);
 
       /**
        * @brief    Buffer related functions.

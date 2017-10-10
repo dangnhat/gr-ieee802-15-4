@@ -214,9 +214,9 @@ public:
       boost::this_thread::sleep_for (boost::chrono::milliseconds (1000));
 
       /* Reporting */
-      std::cout << "MAC: Reports: " << count << ". (e) "
-          << d_num_packet_errors - num_packet_errors_prev << " (r) "
-          << d_num_packets_received - num_packet_received_prev << " (er) "
+      std::cout << "MAC: Reports: " << count << ". err: "
+          << d_num_packet_errors - num_packet_errors_prev << " recv: "
+          << d_num_packets_received - num_packet_received_prev << " errRate: "
           << float (d_num_packet_errors - num_packet_errors_prev)
               / (d_num_packets_received - num_packet_received_prev) << std::endl;
 
