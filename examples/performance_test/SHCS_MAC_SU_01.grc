@@ -373,7 +373,7 @@
     </param>
     <param>
       <key>msg</key>
-      <value>pmt.intern("1.0 Hello from SU01\n")</value>
+      <value>pmt.intern("This is a hello world string for testing\n")</value>
     </param>
     <param>
       <key>minoutbuf</key>
