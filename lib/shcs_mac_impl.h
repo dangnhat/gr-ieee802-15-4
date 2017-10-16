@@ -28,8 +28,9 @@
 namespace gr {
   namespace ieee802_15_4 {
     enum NWK_TYPE {
-      SUC = true,
-      SU = false
+      SU = 0,
+      SUC = 1,
+      SUR = 2,
     };
 
     enum control_thread_state_e {
@@ -51,7 +52,7 @@ namespace gr {
        *
        * @param[in]   debug, turn on/off debugging messages.
        */
-      shcs_mac_impl(bool debug, bool nwk_dev_type, int suc_id, int mac_addr,
+      shcs_mac_impl(bool debug, int nwk_dev_type, int suc_id, int mac_addr,
                     int fft_len);
 
       /**
@@ -129,11 +130,9 @@ namespace gr {
        const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
                                         // if needed.
 
-       uint16_t d_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
-       uint16_t d_mac_addr = 0; // Short mac address (16 bits).
+       uint16_t d_suc_id = 0xFFFF;
+       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
        const uint16_t d_broadcast_addr = 0xFFFF;
-       const uint16_t d_coordinator_addr = 0x00;
-       uint16_t d_dest_addr = 0x00;
 
        /* Time frame related variables */
        boost::random::minstd_rand rng;
@@ -172,7 +171,7 @@ namespace gr {
        /**
         * @brief   Control thread for Coordinator.
         */
-       void coor_control_thread(void);
+       void suc_control_thread(void);
 
        /**
          * @brief   Control thread for SU.
@@ -180,9 +179,14 @@ namespace gr {
        void su_control_thread(void);
 
        /**
+        * @brief   Control thread for Router.
+        */
+       void sur_control_thread(void);
+
+       /**
         * @brief   Transmission thread.
         */
-      void transmit_thread(void);
+       void transmit_thread(void);
 
        /**
         * @brief   Handle package from PHY layer and forward processed package

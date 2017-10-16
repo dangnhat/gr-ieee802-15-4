@@ -68,32 +68,40 @@ namespace gr
 
     /*------------------------------------------------------------------------*/
     shcs_mac::sptr
-    shcs_mac::make (bool debug, bool nwk_dev_type, int suc_id, int mac_addr,
+    shcs_mac::make (bool debug, int nwk_dev_type, int suc_id, int assoc_suc_id,
                     int fft_len)
     {
       return gnuradio::get_initial_sptr (
-          new shcs_mac_impl (debug, nwk_dev_type, suc_id, mac_addr, fft_len));
+          new shcs_mac_impl (debug, nwk_dev_type, suc_id, assoc_suc_id,
+                             fft_len));
     }
 
     /*------------------------------------------------------------------------*/
-    shcs_mac_impl::shcs_mac_impl (bool debug, bool nwk_dev_type, int suc_id,
-                                  int mac_addr, int fft_len) :
+    shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type, int suc_id,
+                                  int assoc_suc_id, int fft_len) :
         sync_block ("shcs_mac",
                     gr::io_signature::make (1, 1, sizeof(float) * fft_len),
                     gr::io_signature::make (0, 0, 0)), d_msg_offset (0), d_seq_nr (
             0), d_debug (debug), d_num_packet_errors (0), d_num_packets_received (
-            0), d_nwk_dev_type (nwk_dev_type), d_suc_id (suc_id), d_mac_addr (
-            mac_addr), d_fft_len (fft_len)
+            0), d_nwk_dev_type (nwk_dev_type), d_suc_id (suc_id), d_assoc_suc_id (
+            assoc_suc_id), d_fft_len (fft_len)
     {
       /* Print hello message and time stamp */
-      dout << "Hello, this is SHCS MAC protocol implementation, version 0.2"
+      dout << "Hello, this is SHCS MAC protocol implementation, version 0.3"
           << endl;
-      dout << "NWK device type: "
-          << (nwk_dev_type == SUC ? "SU Coordinator" : "SU") << endl;
       if (nwk_dev_type == SUC) {
+        dout << "NWK device type: SU Coordinator" << endl;
         dout << "SUC ID: " << hex << d_suc_id << dec << endl;
       }
-      dout << "Short MAC address: " << hex << d_mac_addr << dec << endl;
+      else if (nwk_dev_type == SUR) {
+        dout << "NWK device type: SU Router" << endl;
+        dout << "SUC ID: " << hex << d_suc_id << dec << endl;
+        dout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
+      }
+      else {
+        dout << "NWK device type: SU" << endl;
+        dout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
+      }
 
       /* Register message port from NWK Layer */
       message_port_register_in (pmt::mp ("app in"));
@@ -137,7 +145,13 @@ namespace gr
         /* Create control thread for Coordinator */
         control_thread_ptr = boost::shared_ptr<gr::thread::thread> (
             new gr::thread::thread (
-                boost::bind (&shcs_mac_impl::coor_control_thread, this)));
+                boost::bind (&shcs_mac_impl::suc_control_thread, this)));
+      }
+      else if (nwk_dev_type == SUR) {
+        /* Create control thread for Router */
+        control_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+            new gr::thread::thread (
+                boost::bind (&shcs_mac_impl::sur_control_thread, this)));
       }
       else {
         /* Create control thread for SU */
@@ -289,7 +303,7 @@ namespace gr
         d_msg_len = 0;
         le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
-        if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &d_mac_addr,
+        if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &pan_id_le,
                                                    2,
                                                    (uint8_t*) &d_broadcast_addr,
                                                    2, pan_id_le, pan_id_le,
@@ -430,7 +444,7 @@ namespace gr
 
     /*------------------------------------------------------------------------*/
     void
-    shcs_mac_impl::coor_control_thread (void)
+    shcs_mac_impl::suc_control_thread (void)
     {
       dout << "Coordinator control thread created." << endl;
 
@@ -512,6 +526,26 @@ namespace gr
           return;
         }
       }
+    }
+
+    /*------------------------------------------------------------------------*/
+    void
+    shcs_mac_impl::sur_control_thread (void)
+    {
+      dout << "SUR control thread created." << endl;
+
+      /* Waiting for everything to settle */
+      boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
+
+      /* Bootstrapping */
+      su_bootstrapping ();
+
+      /* Reload tasks */
+      reload_tasks ();
+
+      /* Start tasks_processor */
+      tasks_processor::get ().start ();
+
     }
 
     /*------------------------------------------------------------------------*/
@@ -865,11 +899,11 @@ namespace gr
         d_num_bytes_received = 0;
 
         /* Sleep for 5s  */
-        boost::this_thread::sleep_for (boost::chrono::milliseconds (5000));
+        boost::this_thread::sleep_for (boost::chrono::seconds (5));
 
         /* Reporting */
-        std::cout << "MAC: Reports #" << count << ", avg data rate: " <<
-            d_num_bytes_received*8/1024/5 << " kbit/s" << std::endl;
+        std::cout << "MAC: Reports #" << count << ", avg data rate: "
+            << d_num_bytes_received * 8 / 1024 / 5 << " kbit/s" << std::endl;
 
         count++;
       }

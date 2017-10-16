@@ -45,7 +45,7 @@ namespace gr {
        * class. ieee802_15_4::shcs_mac::make is the public interface for
        * creating new instances.
        */
-      static sptr make(bool debug, bool nwk_dev_type, int suc_id, int mac_addr,
+      static sptr make(bool debug, int nwk_dev_type, int suc_id, int assoc_suc_id,
                        int fft_len);
     };
 

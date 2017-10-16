@@ -746,7 +746,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[1,00]</value>
+      <value>[0,0]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -759,6 +759,10 @@
   </block>
   <block>
     <key>ieee802_15_4_shcs_mac</key>
+    <param>
+      <key>assoc_suc_id</key>
+      <value>0</value>
+    </param>
     <param>
       <key>alias</key>
       <value></value>
@@ -796,10 +800,6 @@
       <value>ieee802_15_4_shcs_mac_0</value>
     </param>
     <param>
-      <key>mac_addr</key>
-      <value>0</value>
-    </param>
-    <param>
       <key>maxoutbuf</key>
       <value>0</value>
     </param>
@@ -809,11 +809,11 @@
     </param>
     <param>
       <key>nwk_dev_type</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>suc_id</key>
-      <value>16</value>
+      <value>0</value>
     </param>
   </block>
   <block>
