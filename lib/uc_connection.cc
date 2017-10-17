@@ -80,7 +80,7 @@ uc_connection::pack (pmt::pmt_t msg)
 
   uint8_t dest[2];
   if (!uc_connection::rime_add_from_string (tmp, dest)) {
-    std::cerr << "Warning: invalid target RIME-Address for unicast on channel ";
+    std::cerr << "#RIME: Warning: invalid target RIME-Address for unicast on channel ";
     std::cerr << static_cast<unsigned> (d_channel);
     std::cerr << ". Message will not be sent." << std::endl;
     return;
@@ -109,7 +109,7 @@ uc_connection::unpack (pmt::pmt_t msg)
 
   //this block is not the destination of the message
   if (buf[2] != d_rime_add_mine[0] || buf[3] != d_rime_add_mine[1]) {
-    std::cout << "wrong rime add " << int (buf[2]) << "." << int (buf[3])
+    std::cout << "#RIME: wrong rime add " << int (buf[2]) << "." << int (buf[3])
         << std::endl;
     return;
   }
