@@ -353,7 +353,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -373,7 +373,7 @@
     </param>
     <param>
       <key>msg</key>
-      <value>pmt.intern("1.0 Hello from SU01\n")</value>
+      <value>pmt.intern("0.0 Hello from SUR 1\n")</value>
     </param>
     <param>
       <key>minoutbuf</key>
@@ -746,7 +746,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[1,1]</value>
+      <value>[1,0]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -759,6 +759,10 @@
   </block>
   <block>
     <key>ieee802_15_4_shcs_mac</key>
+    <param>
+      <key>assoc_suc_id</key>
+      <value>0</value>
+    </param>
     <param>
       <key>alias</key>
       <value></value>
@@ -796,10 +800,6 @@
       <value>ieee802_15_4_shcs_mac_0</value>
     </param>
     <param>
-      <key>mac_addr</key>
-      <value>1</value>
-    </param>
-    <param>
       <key>maxoutbuf</key>
       <value>0</value>
     </param>
@@ -809,11 +809,11 @@
     </param>
     <param>
       <key>nwk_dev_type</key>
-      <value>False</value>
+      <value>0</value>
     </param>
     <param>
       <key>suc_id</key>
-      <value>101</value>
+      <value>1</value>
     </param>
   </block>
   <block>
@@ -3349,13 +3349,13 @@
     <source_block_id>blocks_message_strobe_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>strobe</source_key>
-    <sink_key>bcin</sink_key>
+    <sink_key>ucin</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_socket_pdu_0_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>pdus</source_key>
-    <sink_key>bcin</sink_key>
+    <sink_key>ucin</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_stream_to_vector_0</source_block_id>
@@ -3413,15 +3413,15 @@
   </connection>
   <connection>
     <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
-    <sink_block_id>blocks_socket_pdu_0_0</sink_block_id>
-    <source_key>bcout</source_key>
-    <sink_key>pdus</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
     <sink_block_id>ieee802_15_4_shcs_mac_0</sink_block_id>
     <source_key>toMAC</source_key>
     <sink_key>app in</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
+    <sink_block_id>blocks_socket_pdu_0_0</sink_block_id>
+    <source_key>ucout</source_key>
+    <sink_key>pdus</sink_key>
   </connection>
   <connection>
     <source_block_id>ieee802_15_4_shcs_mac_0</source_block_id>
