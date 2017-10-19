@@ -24,16 +24,17 @@
 #include <ieee802_15_4/shcs_mac.h>
 #include <boost/lockfree/spsc_queue.hpp>
 
-
-namespace gr {
-  namespace ieee802_15_4 {
-    enum NWK_TYPE {
-      SU = 0,
-      SUC = 1,
-      SUR = 2,
+namespace gr
+{
+  namespace ieee802_15_4
+  {
+    enum NWK_TYPE
+    {
+      SU = 0, SUC = 1, SUR = 2,
     };
 
-    enum control_thread_state_e {
+    enum control_thread_state_e
+    {
       NULL_STATE,
       SU_BOOTSTRAPPING,
       SPECTRUM_SENSING,
@@ -43,24 +44,24 @@ namespace gr {
       RELOADING
     };
 
-
     class shcs_mac_impl : public shcs_mac
     {
-     public:
+    public:
       /**
        * @brief   Constructor.
        *
        * @param[in]   debug, turn on/off debugging messages.
        */
-      shcs_mac_impl(bool debug, int nwk_dev_type, int suc_id, int mac_addr,
-                    int fft_len);
+      shcs_mac_impl (bool debug, int nwk_dev_type,
+                     std::vector<uint8_t> mac_addr, int suc_id,
+                     int assoc_suc_id, int fft_len);
 
       /**
        * @brief   Destructor.
        *
        * @param[in]   debug, turn on/off debugging messages.
        */
-      ~shcs_mac_impl();
+      ~shcs_mac_impl ();
 
       /**
        * @brief   Work function overload. It's used for spectrum sensing.
@@ -72,129 +73,139 @@ namespace gr {
        * \returns number of items actually written to each output stream, or -1 on EOF.
        * It is OK to return a value less than noutput_items.  -1 <= return value <= noutput_items
        */
-      int work(int noutput_items,
-               gr_vector_const_void_star &input_items,
-               gr_vector_void_star &output_items);
+      int
+      work (int noutput_items, gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items);
 
       /**
        * @brief   Return number of error packets.
        *
        * @return  Number of error packets.
        */
-      int get_num_packet_errors();
+      int
+      get_num_packet_errors ();
 
       /**
        * @brief   Return number of received packets.
        *
        * @return  Number of received packets.
        */
-      int get_num_packets_received();
+      int
+      get_num_packets_received ();
 
       /**
        * @brief   Return error ratio.
        *
        * @return  Error ratio.
        */
-      float get_packet_error_ratio();
+      float
+      get_packet_error_ratio ();
 
-     /*--------------------------------- Private -----------------------------*/
-     private:
-       bool        d_debug;
-       int         d_msg_offset;
-       int         d_msg_len;
-       uint8_t     d_seq_nr;
-       uint8_t     d_msg[256];
-       int         d_fft_len;
+      /*--------------------------------- Private -----------------------------*/
+    private:
+      bool d_debug;
+      int d_msg_offset;
+      int d_msg_len;
+      uint8_t d_seq_nr;
+      uint8_t d_msg[256];
+      int d_fft_len;
 
-       int d_num_packet_errors;
-       int d_num_packets_received;
+      int d_num_packet_errors;
+      int d_num_packets_received;
 
-       /* network device type */
-       bool       d_nwk_dev_type;
+      /* network device type */
+      bool d_nwk_dev_type;
 
-       /* wireless channel configuration */
-       static const int num_of_channels = 3;  // channel 24 -> 26: [2.470, ..., 2.480] GHz,
-       const double channel_step = 5e6; // 5MHz step between 2 channels.
-       const int first_channel_index = 24;
-       double center_freqs[num_of_channels] = {2.470e9}; // channel 24: 2.470GHz.
+      /* wireless channel configuration */
+      static const int num_of_channels = 3; // channel 24 -> 26: [2.470, ..., 2.480] GHz,
+      const double channel_step = 5e6; // 5MHz step between 2 channels.
+      const int first_channel_index = 24;
+      double center_freqs[num_of_channels] = { 2.470e9 }; // channel 24: 2.470GHz.
 
-       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
-       const double sampling_rate = 4e6;  // Hz,
+      const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
+      const double sampling_rate = 4e6;  // Hz,
 
-       const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
-       const uint32_t Tf = Ts*num_of_channels; // ms, frame duration.
-       const uint16_t Th = 5; // ms, channel hopping duration.
-       uint16_t Tss = 20; // ms, sensing duration.
-       const uint16_t Tb = 20; // ms, beacon duration.
-       const uint16_t Tr = 5; // ms, reporting duration.
-       const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
-                                        // if needed.
+      const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
+      const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
+      const uint16_t Th = 5; // ms, channel hopping duration.
+      uint16_t Tss = 20; // ms, sensing duration.
+      const uint16_t Tb = 20; // ms, beacon duration.
+      const uint16_t Tr = 5; // ms, reporting duration.
+      const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
+                                       // if needed.
 
-       uint16_t d_suc_id = 0xFFFF;
-       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
-       const uint16_t d_broadcast_addr = 0xFFFF;
+      uint16_t d_suc_id = 0xFFFF;
+      uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
+      const uint16_t d_broadcast_addr = 0xFFFF;
+      uint8_t d_mac_addr[2];
 
-       /* Time frame related variables */
-       boost::random::minstd_rand rng;
-       uint32_t current_rand_seed = 0;
-       boost::posix_time::ptime time_slot_start;
+      /* Time frame related variables */
+      boost::random::minstd_rand rng;
+      uint32_t current_rand_seed = 0;
+      boost::posix_time::ptime time_slot_start;
 
-       /* Channel hopping */
-       uint32_t current_working_channel;
+      /* Channel hopping */
+      uint32_t current_working_channel;
 
-       /* Spectrum sensing */
-       bool is_spectrum_sensing_completed = false;
-       bool is_channel_available = false;
-       double d_ss_threshold_dBm = 10; // dBm, 50% of 20dBm.
-       double d_avg_power = 0; // W.
-       double d_avg_power_dBm = 0; // dBm
-       uint32_t d_avg_power_count = 0;
+      /* Spectrum sensing */
+      bool is_spectrum_sensing_completed = false;
+      bool is_channel_available = false;
+      double d_ss_threshold_dBm = 10; // dBm, 50% of 20dBm.
+      double d_avg_power = 0; // W.
+      double d_avg_power_dBm = 0; // dBm
+      uint32_t d_avg_power_count = 0;
 
-       /* Beacon duration */
-       bool is_beacon_received = false; // SU only.
-       bool is_busy_signal_received = false;
+      /* Beacon duration */
+      bool is_beacon_received = false; // SU only.
+      bool is_busy_signal_received = false;
 
-       /* Control thread */
-       boost::shared_ptr<gr::thread::thread> control_thread_ptr;
-       uint16_t d_control_thread_state = NULL_STATE;
+      /* Control thread */
+      boost::shared_ptr<gr::thread::thread> control_thread_ptr;
+      uint16_t d_control_thread_state = NULL_STATE;
 
-       /* Transmission thread */
-       boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
-       const long unsigned int d_transmit_queue_size = 128;
-       boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue{d_transmit_queue_size};
-       bool d_su_connected = false;
+      /* Transmission thread */
+      boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
+      const long unsigned int d_transmit_queue_size = 128;
+      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue {
+          d_transmit_queue_size };
+      bool d_su_connected = false;
 
-       /* Reporting thread */
-       int d_num_bytes_received = 0;
-       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
+      /* Reporting thread */
+      int d_num_bytes_received = 0;
+      boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 
-       /**
-        * @brief   Control thread for Coordinator.
-        */
-       void suc_control_thread(void);
+      /**
+       * @brief   Control thread for Coordinator.
+       */
+      void
+      suc_control_thread (void);
 
-       /**
-         * @brief   Control thread for SU.
-         */
-       void su_control_thread(void);
+      /**
+       * @brief   Control thread for SU.
+       */
+      void
+      su_control_thread (void);
 
-       /**
-        * @brief   Control thread for Router.
-        */
-       void sur_control_thread(void);
+      /**
+       * @brief   Control thread for Router.
+       */
+      void
+      sur_control_thread (void);
 
-       /**
-        * @brief   Transmission thread.
-        */
-       void transmit_thread(void);
+      /**
+       * @brief   Transmission thread.
+       */
+      void
+      transmit_thread (void);
 
-       /**
-        * @brief   Handle package from PHY layer and forward processed package
-        *          to upper layer.
-        *
-        * @param[in]   msg, message demodulated by PHY layer.
-        */
-       void mac_in(pmt::pmt_t msg);
+      /**
+       * @brief   Handle package from PHY layer and forward processed package
+       *          to upper layer.
+       *
+       * @param[in]   msg, message demodulated by PHY layer.
+       */
+      void
+      mac_in (pmt::pmt_t msg);
 
       /**
        * @brief   Handle package from NETWORK layer and forward processed
@@ -202,7 +213,8 @@ namespace gr {
        *
        * @param[in]   msg, message received from NETWORK layer.
        */
-      void app_in(pmt::pmt_t msg);
+      void
+      app_in (pmt::pmt_t msg);
 
       /**
        * @brief   Generate MAC frame from a received buffer.
@@ -210,7 +222,8 @@ namespace gr {
        * @param[in]   buf, buffer.
        * @param[in]   len, buffer length.
        */
-      void generate_mac(const uint8_t *buf, int len);
+      void
+      generate_mac (const uint8_t *buf, int len);
 
       /**
        * @brief   Calculate CRC16 checksum for a buffer.
@@ -220,12 +233,14 @@ namespace gr {
        *
        * @return      crc16.
        */
-      uint16_t crc16(uint8_t *buf, int len);
+      uint16_t
+      crc16 (uint8_t *buf, int len);
 
       /**
        * @brief   Print message in buffer.
        */
-      void print_message(uint8_t* buf, int len);
+      void
+      print_message (uint8_t* buf, int len);
 
       /**
        * @brief   Channel hopping. Generate a new seed, and move to new channel
@@ -237,7 +252,8 @@ namespace gr {
        * - current_rand_seed.
        * - current_working_channel.
        */
-      void channel_hopping(void);
+      void
+      channel_hopping (void);
 
       /**
        * @brief   Perform local spectrum sensing within sensing time period.
@@ -247,20 +263,23 @@ namespace gr {
        * - is_spectrum_sensing_completed.
        * - is_channel_available.
        */
-      void spectrum_sensing(void);
+      void
+      spectrum_sensing (void);
 
       /**
        * @brief   SUC: broadcast beacon if spectrum sensing returns channel
        * is available.
        *          SU: wait for beacon. Set is_received_beacon accordingly.
        */
-      void beacon_duration(void);
+      void
+      beacon_duration (void);
 
       /**
        * @brief   both SU and SUC: wait for busy signal. Set is_busy_signal_received
        * accordingly.
        */
-      void reporting_duration(void);
+      void
+      reporting_duration (void);
 
       /**
        * @brief   both SUC, and SU: if the channel is busy (either
@@ -268,12 +287,14 @@ namespace gr {
        * set the state to SLEEPING (drop all packets). Otherwise, set the state
        * to DATA_TRANSMISSION.
        */
-      void data_duration(void);
+      void
+      data_duration (void);
 
       /**
        * @brief   reload tasks at the end of time slot to begin a new one.
        */
-      void reload_tasks(void);
+      void
+      reload_tasks (void);
 
       /**
        * @brief   SU only, bootstrapping for SU. It will choose a random channel
@@ -289,22 +310,30 @@ namespace gr {
        * removed from channels list (currently, it's not implemented).
        * SU will choose another random channel from current channels list.
        */
-      void su_bootstrapping(void);
+      void
+      su_bootstrapping (void);
 
       /**
        * @brief   Reporting performance every 1s.
        */
-      void reporting_thread_func (void);
+      void
+      reporting_thread_func (void);
 
       /**
        * @brief    Buffer related functions.
        */
-      uint16_t buffer_to_uint16(uint8_t* buffer); // LSByte first
-      uint32_t buffer_to_uint32(uint8_t* buffer); // LSByte first
-      void uint16_to_buffer(uint16_t data, uint8_t* buffer); // LSByte fisrt
-      void uint32_to_buffer(uint32_t data, uint8_t* buffer); // LSByte fisrt
-      float buffer_to_float(uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
-      void float_to_buffer(float data, uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
+      uint16_t
+      buffer_to_uint16 (uint8_t* buffer); // LSByte first
+      uint32_t
+      buffer_to_uint32 (uint8_t* buffer); // LSByte first
+      void
+      uint16_to_buffer (uint16_t data, uint8_t* buffer); // LSByte fisrt
+      void
+      uint32_to_buffer (uint32_t data, uint8_t* buffer); // LSByte fisrt
+      float
+      buffer_to_float (uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
+      void
+      float_to_buffer (float data, uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
     };
 
   } // namespace ieee802_15_4

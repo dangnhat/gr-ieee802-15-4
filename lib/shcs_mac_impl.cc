@@ -63,15 +63,17 @@ tasks_processor::get ()
 
 /*------------------------------------------------------------------------*/
 shcs_mac::sptr
-shcs_mac::make (bool debug, int nwk_dev_type, int suc_id, int assoc_suc_id,
-                int fft_len)
+shcs_mac::make (bool debug, int nwk_dev_type, std::vector<uint8_t> mac_addr,
+                int suc_id, int assoc_suc_id, int fft_len)
 {
   return gnuradio::get_initial_sptr (
-      new shcs_mac_impl (debug, nwk_dev_type, suc_id, assoc_suc_id, fft_len));
+      new shcs_mac_impl (debug, nwk_dev_type, mac_addr, suc_id, assoc_suc_id,
+                         fft_len));
 }
 
 /*------------------------------------------------------------------------*/
-shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type, int suc_id,
+shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
+                              std::vector<uint8_t> mac_addr, int suc_id,
                               int assoc_suc_id, int fft_len) :
     sync_block ("shcs_mac",
                 gr::io_signature::make (1, 1, sizeof(float) * fft_len),
@@ -96,6 +98,13 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type, int suc_id,
     dout << "NWK device type: SU" << endl;
     dout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
   }
+
+  if (mac_addr.size () != 2)
+    throw std::invalid_argument ("MAC address has to consist of two integers");
+  d_mac_addr[0] = mac_addr[0];
+  d_mac_addr[1] = mac_addr[1];
+  dout << "MAC address: ";
+  printf ("%x.%x\n", d_mac_addr[0], d_mac_addr[1]);
 
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));
@@ -294,7 +303,7 @@ shcs_mac_impl::beacon_duration (void)
     d_msg_len = 0;
     le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
-    if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &pan_id_le, 2,
+    if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &d_mac_addr, 2,
                                                (uint8_t*) &d_broadcast_addr, 2,
                                                pan_id_le, pan_id_le, flags,
                                                d_seq_nr++)) == 0) {
@@ -633,7 +642,24 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
   /* Other packet types */
   /* Check destination address */
+  uint8_t dest[8];
+  le_uint16_t dest_pan;
+  int dest_addr_len = 0;
+
   dout << "MAC: Data/ACK packet." << endl;
+
+  dest_addr_len = ieee802154_get_dst (frame_p, dest, &dest_pan);
+  if (dest_addr_len != 2) {
+    dout << "MAC: Something wrong here, dest_addr_len: " << dest_addr_len
+        << endl;
+    return;
+  }
+
+  if ((dest[0] != d_mac_addr[0]) || (dest[1] != d_mac_addr[1])) {
+    dout << "MAC: not for me " << int (dest[0]) << "." << int (dest[1])
+        << ", dropping packet!" << endl;
+    return;
+  }
 
   /* Forward to RIME layer */
   dout << "MAC: forward packet to RIME layer." << endl;
@@ -757,8 +783,7 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
   }
 
   /* Peak to get src addr and dest addr */
-  const uint8_t* d_dest_addr = &buf[2];
-  const uint8_t* d_mac_addr = &buf[4];
+  const uint8_t* d_dest_addr = &buf[0];
   if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &d_mac_addr, 2,
                                              (uint8_t*) &d_dest_addr, 2,
                                              pan_id_le, pan_id_le, flags,
@@ -770,8 +795,8 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
     memcpy (d_msg, mhr, d_msg_len);
 
     /* Prepare the data payload */
-    memcpy (&d_msg[d_msg_len], buf, len);
-    d_msg_len += len;
+    memcpy (&d_msg[d_msg_len], buf + 2, len - 2);
+    d_msg_len += len - 2;
 
     /* Calculate FCS */
     uint16_t fcs = crc16 (d_msg, d_msg_len);

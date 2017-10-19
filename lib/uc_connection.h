@@ -29,14 +29,16 @@ namespace gr{
 
 		public:
 			static std::array<uint8_t, 256> make_msgbuf(uint16_t channel,
-					const uint8_t src[2], const uint8_t dest[2]);
+					const uint8_t src[2], const uint8_t dest[2], const uint8_t next_hop_mac[2]);
 			static bool rime_add_from_string(std::string &to_parse,
 					uint8_t addr[2]);
-			uc_connection(rime_stack *block, uint16_t channel, 
-						pmt::pmt_t inport, pmt::pmt_t outport, 
+			uc_connection(rime_stack *block, uint16_t channel,
+						pmt::pmt_t inport, pmt::pmt_t outport,
 						const uint8_t rime_add_mine[2]);
 			void pack(pmt::pmt_t msg);
 			void unpack(pmt::pmt_t msg);
+			int get_next_hop_mac_addr (const uint8_t* rime_src, const uint8_t* rime_dest,
+			                       uint8_t* next_hop_mac);
 		};
 	}
 }
