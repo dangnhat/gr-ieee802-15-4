@@ -136,8 +136,8 @@ namespace gr
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
-      const uint16_t d_broadcast_addr = 0xFFFF;
-      uint8_t d_mac_addr[2];
+      const uint8_t d_broadcast_addr[2] = {0xFF, 0xFF};
+      uint8_t d_mac_addr[2] = {0x0, 0x0};
 
       /* Time frame related variables */
       boost::random::minstd_rand rng;
