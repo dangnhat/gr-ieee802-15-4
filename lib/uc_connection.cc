@@ -128,21 +128,22 @@ uc_connection::unpack (pmt::pmt_t msg)
 {
   unsigned char buf[256];
   size_t data_len = pmt::blob_length (msg);
-  std::memcpy (buf, pmt::blob_data (msg), data_len);
+  std::memcpy (buf + 2, pmt::blob_data (msg), data_len);
+
+  uint8_t* next_hop_mac_addr = &buf[0];
+  uint8_t* channel = &buf[2];
+  uint8_t* dest = &buf[4];
+  uint8_t* src = &buf[6];
 
   //this block is not the destination of the message
-  if (buf[2] != d_rime_add_mine[0] || buf[3] != d_rime_add_mine[1]) {
-    std::cout << "#RIME: wrong rime add " << int (buf[2]) << "." << int (buf[3])
-        << std::endl;
+  if (dest[0] != d_rime_add_mine[0] || dest[1] != d_rime_add_mine[1]) {
+    std::cout << "#RIME: wrong rime add " << int (dest[0]) << "."
+        << int (dest[1]) << std::endl;
 
     /* Forwarding */
     cout << "#RIME: Forwarding..." << endl;
 
     /* Routing */
-    uint8_t next_hop_mac_addr[2];
-    uint8_t* dest = &buf[2];
-    uint8_t* src = &buf[4];
-    uint8_t* channel = &buf[0];
     if (get_next_hop_mac_addr (src, dest, next_hop_mac_addr) == -1) {
       printf (
           "#RIME: can't find next hop mac address (src: %d.%d, dest: %d.%d)\n",
@@ -150,28 +151,16 @@ uc_connection::unpack (pmt::pmt_t msg)
       cout << "Dropping packet!" << endl;
       return;
     }
-    else {
-      printf (
-          "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)",
-          src[0], src[1], dest[0], dest[1],
-          next_hop_mac_addr[0], next_hop_mac_addr[1]);
-    }
+    printf (
+        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)",
+        src[0], src[1], dest[0], dest[1], next_hop_mac_addr[0],
+        next_hop_mac_addr[1]);
 
-//
-//    std::array < uint8_t, 256 > buf = uc_connection::make_msgbuf (
-//        (channel[0] << 8) | channel[1], src, dest, next_hop_mac_addr);
-//
-//    size_t data_len = tmp.length ();
-//    assert(data_len);
-//    assert(data_len < 256 - header_length - 2);
-//
-//    std::memcpy (buf.data () + header_length + 2, tmp.data (), data_len);
-//    pmt::pmt_t rime_msg = pmt::make_blob (buf.data (),
-//                                          data_len + header_length + 2);
-//
-//    d_block->message_port_pub (d_mac_outport,
-//                               pmt::cons (pmt::PMT_NIL, rime_msg));
-//
+    /* Send packet to MAC layer */
+    pmt::pmt_t to_mac_msg = pmt::make_blob(buf, data_len + 2);
+
+    d_block->message_port_pub (d_mac_outport,
+                               pmt::cons (pmt::PMT_NIL, to_mac_msg));
     return;
   }
 
@@ -182,10 +171,13 @@ uc_connection::unpack (pmt::pmt_t msg)
 
 /*----------------------- Routing table --------------------------------------*/
 const int routing_table_max_rows = 16;
-const uint8_t sur1_routing_table[routing_table_max_rows][4] = { // dest RIME address, next hop MAC address.
+const int routing_table_max_cols = 4;
+typedef uint8_t routing_table_t [routing_table_max_rows][routing_table_max_cols];
+
+const routing_table_t sur1_routing_table = { // dest RIME address, next hop MAC address.
     { 12, 34, 1, 0 }, };
 
-const uint8_t sur2_routing_table[routing_table_max_rows][4] = { // dest RIME address, next hop MAC address.
+const routing_table_t sur2_routing_table = { // dest RIME address, next hop MAC address.
     { 12, 34, 2, 0 }, { 12, 35, 2, 0 }, };
 
 int
@@ -193,25 +185,25 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
                                       const uint8_t* rime_dest,
                                       uint8_t* next_hop_mac)
 {
-  uint8_t** routing_table;
+  const routing_table_t* routing_table;
   int count;
 
   if ((rime_src[0] == 12) && (rime_src[1] == 35)) {
-    routing_table = sur1_routing_table;
+    routing_table = &sur1_routing_table;
   }
   else if ((rime_src[0] == 12) && (rime_src[1] == 36)) {
-    routing_table = sur2_routing_table;
+    routing_table = &sur2_routing_table;
   }
   else {
     return -1;
   }
 
   for (count = 0; count < routing_table_max_rows; count++) {
-    if ((rime_dest[0] == routing_table[count][0])
-        && (rime_dest[1] == routing_table[count][1])) {
+    if ((rime_dest[0] == (*routing_table)[count][0])
+        && (rime_dest[1] == (*routing_table)[count][1])) {
       /* Found RIME dest address in routing table */
-      next_hop_mac[0] = routing_table[count][2];
-      next_hop_mac[1] = routing_table[count][3];
+      next_hop_mac[0] = (*routing_table)[count][2];
+      next_hop_mac[1] = (*routing_table)[count][3];
 
       return 0;
     }
