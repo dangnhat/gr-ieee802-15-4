@@ -188,10 +188,10 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
   const routing_table_t* routing_table;
   int count;
 
-  if ((rime_src[0] == 12) && (rime_src[1] == 35)) {
+  if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 35)) {
     routing_table = &sur1_routing_table;
   }
-  else if ((rime_src[0] == 12) && (rime_src[1] == 36)) {
+  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 36)) {
     routing_table = &sur2_routing_table;
   }
   else {
