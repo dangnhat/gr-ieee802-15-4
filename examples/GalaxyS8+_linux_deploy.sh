@@ -51,7 +51,7 @@ cd gr-ieee802-15-4
 git checkout shcs_mac_demo
 mkdir build
 cd build
-cmake ../
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 make
 sudo make install
 sudo ldconfig
