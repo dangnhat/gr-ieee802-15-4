@@ -137,8 +137,8 @@ uc_connection::unpack (pmt::pmt_t msg)
           << int (dest[1]) << endl;
       return;
     }
-    dout << "#RIME: Forward -> next_hop_mac: " << next_hop_mac_addr[0] << "."
-        << next_hop_mac_addr[1] << endl;
+    dout << "#RIME: Forward -> next_hop_mac: " << int(next_hop_mac_addr[0]) << "."
+        << int(next_hop_mac_addr[1]) << endl;
 
     /* Send packet to MAC layer */
     pmt::pmt_t to_mac_msg = pmt::make_blob (buf, data_len + 2);
