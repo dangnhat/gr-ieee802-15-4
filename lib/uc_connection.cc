@@ -102,7 +102,7 @@ uc_connection::pack (pmt::pmt_t msg)
   }
   else {
     printf (
-        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)",
+        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)\n",
         d_rime_add_mine[0], d_rime_add_mine[1], dest[0], dest[1],
         next_hop_mac_addr[0], next_hop_mac_addr[1]);
   }
@@ -152,7 +152,7 @@ uc_connection::unpack (pmt::pmt_t msg)
       return;
     }
     printf (
-        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)",
+        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)\n",
         src[0], src[1], dest[0], dest[1], next_hop_mac_addr[0],
         next_hop_mac_addr[1]);
 

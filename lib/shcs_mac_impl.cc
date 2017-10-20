@@ -783,6 +783,13 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
   }
 
   /* Peak to get src addr and dest addr */
+  /* Test */
+  cout << "MAC: TEST: buf: " << endl;
+  for (int count = 0; count < len; count++) {
+    cout << buf[count] << " ";
+  }
+  count << endl;
+
   const uint8_t* d_dest_addr = &buf[0];
   if ((d_msg_len = ieee802154_set_frame_hdr (mhr, (uint8_t*) &d_mac_addr, 2,
                                              (uint8_t*) &d_dest_addr, 2,
