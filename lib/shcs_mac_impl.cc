@@ -786,7 +786,7 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
   /* Test */
   dout << "MAC: TEST: buf: " << endl;
   for (int count = 0; count < len; count++) {
-    dout << buf[count] << " ";
+    dout << uint16_t(buf[count]) << " ";
   }
   dout << endl;
 

@@ -164,7 +164,7 @@ uc_connection::unpack (pmt::pmt_t msg)
     return;
   }
 
-  pmt::pmt_t rime_payload = pmt::make_blob (buf + header_length,
+  pmt::pmt_t rime_payload = pmt::make_blob (buf + 2 + header_length,
                                             data_len - header_length);
   d_block->message_port_pub (d_outport, pmt::cons (pmt::PMT_NIL, rime_payload));
 }
