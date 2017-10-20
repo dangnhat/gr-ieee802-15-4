@@ -66,6 +66,8 @@ public:
 
 		//register runicast message ports
 		add_connections(num_rucs, ruc_channels, "rucin", "rucout", ruc);
+
+		std::cout << "RIME address: " << d_rime_add[0] << "." << d_rime_add[1] << std::endl;
 	}
 
 	~rime_stack_impl() {

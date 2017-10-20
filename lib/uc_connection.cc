@@ -21,6 +21,8 @@
 using namespace gr::ieee802_15_4;
 using namespace std;
 
+#define dout d_debug && cout
+
 uc_connection::uc_connection (rime_stack *block, uint16_t channel,
                               pmt::pmt_t inport, pmt::pmt_t outport,
                               const uint8_t rime_add_mine[2]) :
@@ -29,12 +31,12 @@ uc_connection::uc_connection (rime_stack *block, uint16_t channel,
 
 }
 
-std::array<uint8_t, 256>
+array<uint8_t, 256>
 uc_connection::make_msgbuf (uint16_t channel, const uint8_t src[2],
                             const uint8_t dest[2],
                             const uint8_t next_hop_mac[2])
 {
-  std::array<uint8_t, 256> buf;
+  array<uint8_t, 256> buf;
 
   buf[0] = next_hop_mac[0];
   buf[1] = next_hop_mac[1];
@@ -49,12 +51,12 @@ uc_connection::make_msgbuf (uint16_t channel, const uint8_t src[2],
 }
 
 bool
-uc_connection::rime_add_from_string (std::string &to_parse, uint8_t addr[2])
+uc_connection::rime_add_from_string (string &to_parse, uint8_t addr[2])
 {
-  unsigned long rime_zero_long = std::strtoul (to_parse.data (), nullptr, 10);
+  unsigned long rime_zero_long = strtoul (to_parse.data (), nullptr, 10);
   size_t index = to_parse.find (".");
   to_parse.erase (0, index + 1);
-  unsigned long rime_one_long = std::strtoul (to_parse.data (), nullptr, 10);
+  unsigned long rime_one_long = strtoul (to_parse.data (), nullptr, 10);
   index = to_parse.find_first_not_of ("0123456789");
   if (to_parse.at (index) == ' ') {
     to_parse.erase (0, index + 1);
@@ -80,43 +82,31 @@ uc_connection::pack (pmt::pmt_t msg)
     return;
   }
 
-  std::string tmp = rime_connection::msg_to_string (msg);
+  string tmp = rime_connection::msg_to_string (msg);
 
   uint8_t dest[2];
   if (!uc_connection::rime_add_from_string (tmp, dest)) {
-    std::cerr
-        << "#RIME: Warning: invalid target RIME-Address for unicast on channel ";
-    std::cerr << static_cast<unsigned> (d_channel);
-    std::cerr << ". Message will not be sent." << std::endl;
+    dout << "#RIME: invalid target RIME-Address" << endl;
     return;
   }
 
   /* Routing */
   uint8_t next_hop_mac_addr[2];
   if (get_next_hop_mac_addr (d_rime_add_mine, dest, next_hop_mac_addr) == -1) {
-    printf (
-        "#RIME: can't find next hop mac address (src: %d.%d, dest: %d.%d)\n",
-        d_rime_add_mine[0], d_rime_add_mine[1], dest[0], dest[1]);
-    cout << "Dropping packet!" << endl;
+    dout << "#RIME: Can't find next hop for: " << int (dest[0]) << "."
+        << int (dest[1]) << endl;
     return;
   }
-  else {
-    printf (
-        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)\n",
-        d_rime_add_mine[0], d_rime_add_mine[1], dest[0], dest[1],
-        next_hop_mac_addr[0], next_hop_mac_addr[1]);
-  }
 
-  std::array<uint8_t, 256> buf = uc_connection::make_msgbuf (d_channel,
-                                                             d_rime_add_mine,
-                                                             dest,
-                                                             next_hop_mac_addr);
+  array<uint8_t, 256> buf = uc_connection::make_msgbuf (d_channel,
+                                                        d_rime_add_mine, dest,
+                                                        next_hop_mac_addr);
 
   size_t data_len = tmp.length ();
   assert(data_len);
   assert(data_len < 256 - header_length - 2);
 
-  std::memcpy (buf.data () + header_length + 2, tmp.data (), data_len);
+  memcpy (buf.data () + header_length + 2, tmp.data (), data_len);
   pmt::pmt_t rime_msg = pmt::make_blob (buf.data (),
                                         data_len + header_length + 2);
 
@@ -128,7 +118,7 @@ uc_connection::unpack (pmt::pmt_t msg)
 {
   unsigned char buf[256];
   size_t data_len = pmt::blob_length (msg);
-  std::memcpy (buf + 2, pmt::blob_data (msg), data_len);
+  memcpy (buf + 2, pmt::blob_data (msg), data_len);
 
   uint8_t* next_hop_mac_addr = &buf[0];
   uint8_t* channel = &buf[2];
@@ -137,27 +127,21 @@ uc_connection::unpack (pmt::pmt_t msg)
 
   //this block is not the destination of the message
   if (dest[0] != d_rime_add_mine[0] || dest[1] != d_rime_add_mine[1]) {
-    std::cout << "#RIME: wrong rime add " << int (dest[0]) << "."
-        << int (dest[1]) << std::endl;
+    dout << "#RIME: wrong rime add " << int (dest[0]) << "." << int (dest[1])
+        << endl;
 
     /* Forwarding */
-    cout << "#RIME: Forwarding..." << endl;
-
     /* Routing */
     if (get_next_hop_mac_addr (src, dest, next_hop_mac_addr) == -1) {
-      printf (
-          "#RIME: can't find next hop mac address (src: %d.%d, dest: %d.%d)\n",
-          src[0], src[1], dest[0], dest[1]);
-      cout << "Dropping packet!" << endl;
+      dout << "#RIME: Can't find next hop for: " << int (dest[0]) << "."
+          << int (dest[1]) << endl;
       return;
     }
-    printf (
-        "#RIME: found next hop mac address (src: %d.%d, dest: %d.%d, next_hop_mac: %d.%d)\n",
-        src[0], src[1], dest[0], dest[1], next_hop_mac_addr[0],
-        next_hop_mac_addr[1]);
+    dout << "#RIME: Forward -> next_hop_mac: " << next_hop_mac_addr[0] << "."
+        << next_hop_mac_addr[1] << endl;
 
     /* Send packet to MAC layer */
-    pmt::pmt_t to_mac_msg = pmt::make_blob(buf, data_len + 2);
+    pmt::pmt_t to_mac_msg = pmt::make_blob (buf, data_len + 2);
 
     d_block->message_port_pub (d_mac_outport,
                                pmt::cons (pmt::PMT_NIL, to_mac_msg));
@@ -172,7 +156,7 @@ uc_connection::unpack (pmt::pmt_t msg)
 /*----------------------- Routing table --------------------------------------*/
 const int routing_table_max_rows = 16;
 const int routing_table_max_cols = 4;
-typedef uint8_t routing_table_t [routing_table_max_rows][routing_table_max_cols];
+typedef uint8_t routing_table_t[routing_table_max_rows][routing_table_max_cols];
 
 const routing_table_t sur1_routing_table = { // dest RIME address, next hop MAC address.
     { 12, 34, 1, 0 }, };
