@@ -746,7 +746,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[1,0]</value>
+      <value>[12,34]</value>
     </param>
     <param>
       <key>ruc_channels</key>
