@@ -625,7 +625,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
             is_beacon_received = true;
 
             dout << "MAC: Beacon state. => is_beacon_received = true." << endl;
-            dout << "Recalculate time_slot_start: " << time_slot_start << endl;
+            dout << "Updated time_slot_start: " << time_slot_start << endl;
           }
         }
 
@@ -693,7 +693,7 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
     return;
   }
 
-  dout << "MAC: received new message from APP of length "
+  dout << "MAC: new RIME msg, len: "
       << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
