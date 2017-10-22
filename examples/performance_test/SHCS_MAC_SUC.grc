@@ -721,6 +721,14 @@
       <value></value>
     </param>
     <param>
+      <key>debug</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>default_route</key>
+      <value>[1,2]</value>
+    </param>
+    <param>
       <key>_enabled</key>
       <value>True</value>
     </param>
@@ -751,6 +759,10 @@
     <param>
       <key>ruc_channels</key>
       <value>[132]</value>
+    </param>
+    <param>
+      <key>routing</key>
+      <value>True</value>
     </param>
     <param>
       <key>uc_channels</key>

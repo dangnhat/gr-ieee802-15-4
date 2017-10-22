@@ -721,12 +721,20 @@
       <value></value>
     </param>
     <param>
+      <key>debug</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>default_route</key>
+      <value>[1,0]</value>
+    </param>
+    <param>
       <key>_enabled</key>
       <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(584, 224)</value>
+      <value>(568, 216)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -746,11 +754,15 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[12,37]</value>
+      <value>[12,35]</value>
     </param>
     <param>
       <key>ruc_channels</key>
       <value>[132]</value>
+    </param>
+    <param>
+      <key>routing</key>
+      <value>True</value>
     </param>
     <param>
       <key>uc_channels</key>

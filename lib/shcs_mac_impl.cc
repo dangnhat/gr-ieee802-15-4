@@ -83,28 +83,27 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
         assoc_suc_id), d_fft_len (fft_len)
 {
   /* Print hello message and time stamp */
-  dout << "Hello, this is SHCS MAC protocol implementation, version 0.3"
+  cout << "Hello, this is SHCS MAC protocol implementation, version 0.3"
       << endl;
   if (nwk_dev_type == SUC) {
-    dout << "NWK device type: SU Coordinator" << endl;
-    dout << "SUC ID: " << hex << d_suc_id << dec << endl;
+    cout << "NWK device type: SU Coordinator" << endl;
+    cout << "SUC ID: " << hex << d_suc_id << dec << endl;
   }
   else if (nwk_dev_type == SUR) {
-    dout << "NWK device type: SU Router" << endl;
-    dout << "SUC ID: " << hex << d_suc_id << dec << endl;
-    dout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
+    cout << "NWK device type: SU Router" << endl;
+    cout << "SUC ID: " << hex << d_suc_id << dec << endl;
+    cout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
   }
   else {
-    dout << "NWK device type: SU" << endl;
-    dout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
+    cout << "NWK device type: SU" << endl;
+    cout << "Assoc. SUC ID: " << hex << d_assoc_suc_id << dec << endl;
   }
 
   if (mac_addr.size () != 2)
     throw std::invalid_argument ("MAC address has to consist of two integers");
   d_mac_addr[0] = mac_addr[0];
   d_mac_addr[1] = mac_addr[1];
-  dout << "MAC address: ";
-  printf ("%x.%x\n", d_mac_addr[0], d_mac_addr[1]);
+  cout << "MAC address: " << int (d_mac_addr[0]) << "." << int(d_mac_addr[1]);
 
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));

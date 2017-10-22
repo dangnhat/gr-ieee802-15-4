@@ -178,6 +178,11 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
   else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 36)) {
     routing_table = &sur2_routing_table;
   }
+  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 37)) {
+    /* TODO: hard coded default route for SU1 */
+    next_hop_mac[0] = 3;
+    next_hop_mac[1] = 0;
+  }
   else {
     return -1;
   }

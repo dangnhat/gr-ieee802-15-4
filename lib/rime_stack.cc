@@ -30,21 +30,29 @@ class rime_stack_impl : public rime_stack {
 
 private:
 	enum conn_type{bc, uc, ruc};
-	uint8_t d_rime_add[2];
+	uint8_t d_rime_add[2], d_default_route[2];
+	bool d_debug, d_routing;
 	std::vector<rime_connection *> d_connections;
 
 public:
 
-    rime_stack_impl(std::vector<uint16_t> bc_channels, std::vector<uint16_t> uc_channels,
+    rime_stack_impl(bool debug, bool routing,
+          std::vector<uint16_t> bc_channels, std::vector<uint16_t> uc_channels,
 					std::vector<uint16_t> ruc_channels,
-					std::vector<uint8_t> rime_add)
+					std::vector<uint8_t> rime_add,
+					std::vector<uint8_t> default_route)
 	: block("rime_stack", gr::io_signature::make(0, 0, 0),
-				gr::io_signature::make(0, 0, 0))
+				gr::io_signature::make(0, 0, 0)), d_debug(debug), d_routing(routing)
 	{
 		if(rime_add.size() != 2)
 			throw std::invalid_argument("rime address has to consist of two integers");
 		d_rime_add[0] = rime_add[0];
 		d_rime_add[1] = rime_add[1];
+
+    if(default_route.size() != 2)
+      throw std::invalid_argument("default_route has to consist of two integers");
+    d_default_route[0] = default_route[0];
+    d_default_route[1] = default_route[1];
 
 		int num_bcs = bc_channels.size();
 		int num_ucs = uc_channels.size();
@@ -69,6 +77,10 @@ public:
 
 		std::cout << "RIME address: " << int(d_rime_add[0]) << "."
 		    << int(d_rime_add[1]) << std::endl;
+		std::cout << "RIME Debug: " << (d_debug ? "Enable" : "Disable") << std::endl;
+		std::cout << "RIME Routing: " << (d_routing ? "Enable" : "Disable") << std::endl;
+    std::cout << "RIME default route: " << int (d_default_route[0]) << "."
+        << int (d_default_route[1]) << std::endl;
 	}
 
 	~rime_stack_impl() {
@@ -158,10 +170,10 @@ public:
 };
 
 rime_stack::sptr
-rime_stack::make(std::vector<uint16_t> bc_channels, std::vector<uint16_t> uc_channels, 
+rime_stack::make(bool debug, bool routing, std::vector<uint16_t> bc_channels, std::vector<uint16_t> uc_channels,
 				 std::vector<uint16_t> ruc_channels,
-				std::vector<uint8_t> rime_add) 
+				std::vector<uint8_t> rime_add, std::vector<uint8_t> default_route)
 {
-	return gnuradio::get_initial_sptr(new rime_stack_impl(bc_channels, uc_channels,
-										ruc_channels, rime_add));
+	return gnuradio::get_initial_sptr(new rime_stack_impl(debug, routing, bc_channels, uc_channels,
+										ruc_channels, rime_add, default_route));
 }
