@@ -970,7 +970,7 @@ shcs_mac_impl::reporting_thread_func (void)
     d_num_bytes_received = 0;
 
     /* Sleep for 5s  */
-    boost::this_thread::sleep_for (boost::chrono::seconds (5));
+    boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "

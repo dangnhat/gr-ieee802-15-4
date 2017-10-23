@@ -191,7 +191,7 @@ namespace gr
           d_transmit_queue_size };
 
       /* Reporting thread */
-      const int d_reporting_period = 20000; /* ms */
+      const int d_reporting_period = 10; /* s */
       uint64_t d_num_bytes_received = 0;
       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 
