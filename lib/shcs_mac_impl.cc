@@ -243,7 +243,7 @@ shcs_mac_impl::channel_hopping (void)
     }
   }
 
-  current_working_channel = seed_tmp % num_of_channels;
+  current_working_channel = get_current_working_channel_from_seed(seed_tmp);
   dout << scientific;
   dout << "-> new channel: " << current_working_channel + first_channel_index
       << ", " << center_freqs[current_working_channel] << endl;
@@ -253,6 +253,21 @@ shcs_mac_impl::channel_hopping (void)
 
   message_port_pub (pmt::mp ("usrp sink cmd"), command);
   message_port_pub (pmt::mp ("usrp source cmd"), command);
+}
+
+/*------------------------------------------------------------------------*/
+uint32_t shcs_mac_impl::get_current_working_channel_from_seed(uint32_t seed)
+{
+  uint32_t temp = seed % max_prio;
+  uint32_t count;
+
+  for (count = 0; count < num_of_channels-1; count++) {
+    if (temp <= channel_prios[count]) {
+      return count;
+    }
+  }
+
+  return count;
 }
 
 /*------------------------------------------------------------------------*/

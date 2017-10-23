@@ -126,6 +126,9 @@ namespace gr
       const double channel_step = 5e6; // 5MHz step between 2 channels.
       const int first_channel_index = 23;
       double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
+      /* TODO: for demo */
+      int max_prio = 100;
+      int channel_prios[num_of_channels-1] = {40, 65, 90}; /* CDF style */
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
@@ -271,7 +274,6 @@ namespace gr
 
       /**
        * @brief   Channel hopping. Generate a new seed, and move to new channel
-       * (new channel = current seed % number of channels).
        * IN:
        * - rng.
        * OUT:
@@ -281,6 +283,17 @@ namespace gr
        */
       void
       channel_hopping (void);
+
+      /**
+       * @brief   Convert seed to current working channel.
+       * (new channel = (current seed % max_prio -> channel_prios mapping)).
+       * IN:
+       * - channel_prios.
+       * - seed.
+       * OUT:
+       * - current_working_channel.
+       */
+      uint32_t get_current_working_channel_from_seed(uint32_t seed);
 
       /**
        * @brief   Perform local spectrum sensing within sensing time period.
