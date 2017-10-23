@@ -410,6 +410,7 @@ shcs_mac_impl::data_duration (void)
   if (d_nwk_dev_type == SU && !d_su_transmit_state) {
     d_control_thread_state = NULL_STATE;
     dout << "Sleeping" << endl;
+    return;
   }
 
   if ((is_channel_available) && (is_beacon_received)
