@@ -974,7 +974,7 @@ shcs_mac_impl::reporting_thread_func (void)
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "
-        << d_num_bytes_received * 8 / 1024 / 5 << " kbit/s" << std::endl;
+        << d_num_bytes_received * 8 / 1024 / d_reporting_period << " kbit/s" << std::endl;
 
     count++;
   }
