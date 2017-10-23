@@ -92,7 +92,13 @@ main ()
       continue;
     }
 
+    buffer[received_buf_len] = '\0';
     cout << "Received: " << buffer << endl;
+
+    /* Skip heart beat message */
+    if (buffer[0] == '#') {
+        continue;
+    }
 
     /* Forward to control center server */
     control_center_addr.sin_family = AF_INET;
