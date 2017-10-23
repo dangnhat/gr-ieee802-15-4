@@ -94,6 +94,11 @@ main ()
 
     cout << "Received: " << buffer << endl;
 
+    /* Skip heart beat message */
+    if (buffer[0] == '#') {
+        continue;
+    }
+
     /* Forward to control center server */
     control_center_addr.sin_family = AF_INET;
     inet_aton (control_center_addr_s.c_str (), &control_center_addr.sin_addr);
