@@ -754,7 +754,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[12,34]</value>
+      <value>[52,34]</value>
     </param>
     <param>
       <key>ruc_channels</key>
@@ -813,7 +813,7 @@
     </param>
     <param>
       <key>mac_addr</key>
-      <value>[1,0]</value>
+      <value>[5,0]</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -829,7 +829,7 @@
     </param>
     <param>
       <key>suc_id</key>
-      <value>1</value>
+      <value>5</value>
     </param>
   </block>
   <block>

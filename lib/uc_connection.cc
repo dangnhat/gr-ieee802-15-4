@@ -185,6 +185,13 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
 
     return 0;
   }
+  else if ((d_rime_add_mine[0] == 52) && (d_rime_add_mine[1] == 35)) {
+      /* TODO: hard coded default route for SU1 (perf test) */
+      next_hop_mac[0] = 5;
+      next_hop_mac[1] = 0;
+
+      return 0;
+  }
   else {
     return -1;
   }
