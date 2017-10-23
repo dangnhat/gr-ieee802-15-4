@@ -93,7 +93,7 @@ main ()
     }
 
     buffer[received_buf_len] = '\0';
-    cout << "Received: " << buffer << endl;
+    cout << "\nReceived: " << buffer << endl;
 
     /* Skip heart beat message */
     if (buffer[0] == '#') {
