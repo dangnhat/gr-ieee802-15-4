@@ -48,7 +48,7 @@ echo
 echo
 echo "Building gr-ieee802-15-4 with $NTHREADS threads..."
 cd gr-ieee802-15-4
-git checkout shcs_mac_demo
+git checkout shcs_mac_multi_hops
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
