@@ -147,6 +147,9 @@ namespace gr
       /* SUR state */
       bool d_sur_state = IN_PARENT_NWK;
 
+      /* TODO: only for demo */
+      bool d_su_transmit_state = true;
+
       /* Time frame related variables */
       boost::random::mt19937 seed_gen;
       boost::random::minstd_rand rng;

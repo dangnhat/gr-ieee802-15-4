@@ -406,6 +406,12 @@ shcs_mac_impl::data_duration (void)
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << time << ": Data Duration" << endl;
 
+  /* TODO: for demo */
+  if (d_nwk_dev_type == SU && !d_su_transmit_state) {
+    d_control_thread_state = NULL_STATE;
+    dout << "Sleeping" << endl;
+  }
+
   if ((is_channel_available) && (is_beacon_received)
       && (!is_busy_signal_received)) {
     d_control_thread_state = DATA_TRANSMISSION;
@@ -434,6 +440,11 @@ shcs_mac_impl::reload_tasks (void)
   /* SUR: switch network */
   if (d_nwk_dev_type == SUR) {
     d_sur_state = !d_sur_state;
+  }
+
+  /* TODO: for demo */
+  if (d_nwk_dev_type == SU) {
+    d_su_transmit_state = !d_su_transmit_state;
   }
 
   /* Perform channel hopping */
