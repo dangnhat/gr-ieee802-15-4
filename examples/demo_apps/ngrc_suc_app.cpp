@@ -92,6 +92,7 @@ main ()
       continue;
     }
 
+    buffer[received_buf_len] = '\0';
     cout << "Received: " << buffer << endl;
 
     /* Skip heart beat message */
