@@ -215,11 +215,11 @@ public:
       d_num_bytes_received = 0;
 
       /* Sleep for 5s  */
-      boost::this_thread::sleep_for (boost::chrono::milliseconds (5000));
+      boost::this_thread::sleep_for (boost::chrono::seconds (10));
 
       /* Reporting */
       std::cout << "MAC: Reports #" << count << ", avg data rate: " <<
-          d_num_bytes_received*8/1024/5 << " kbit/s" << std::endl;
+          d_num_bytes_received*8/1024/10 << " kbit/s" << std::endl;
 
       count++;
     }
