@@ -182,6 +182,8 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
     /* TODO: hard coded default route for SU1 */
     next_hop_mac[0] = 3;
     next_hop_mac[1] = 0;
+
+    return 0;
   }
   else {
     return -1;
