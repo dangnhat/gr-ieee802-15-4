@@ -128,7 +128,7 @@ namespace gr
       double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
       /* TODO: for demo */
       int max_prio = 100;
-      int channel_prios[num_of_channels-1] = {40, 65, 90}; /* CDF style */
+      int channel_prios[num_of_channels-1] = {25, 50, 75}; /* CDF style */
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
