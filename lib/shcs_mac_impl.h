@@ -44,9 +44,9 @@ namespace gr
       RELOADING
     };
 
-    enum sur_state_e {
-      IN_LOCAL_NWK = false,
-      IN_PARENT_NWK = true,
+    enum sur_state_e
+    {
+      IN_LOCAL_NWK = false, IN_PARENT_NWK = true,
     };
 
     class shcs_mac_impl : public shcs_mac
@@ -126,9 +126,8 @@ namespace gr
       const double channel_step = 5e6; // 5MHz step between 2 channels.
       const int first_channel_index = 23;
       double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
-      /* TODO: for demo */
       int max_prio = 100;
-      int channel_prios[num_of_channels-1] = {25, 50, 75}; /* CDF style */
+      int channel_prios[num_of_channels - 1] = { 25, 50, 75 }; /* CDF style */
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
@@ -144,14 +143,17 @@ namespace gr
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
-      const uint8_t d_broadcast_addr[2] = {0xFF, 0xFF};
-      uint8_t d_mac_addr[2] = {0x0, 0x0};
+      const uint8_t d_broadcast_addr[2] = { 0xFF, 0xFF };
+      uint8_t d_mac_addr[2] = { 0x0, 0x0 };
+
+      bool d_ext_operation = false;
+      bool d_assoc_current_sur_state = IN_PARENT_NWK; // Only be used in SUC's beacon,
+                                                      // should always be IN_PARENT_NWK for SUR's beacon
+      const uint8_t EXT_OP_POS = 0;
+      const uint8_t ASSOC_CURRENT_SUR_STATE_POS = 1;
 
       /* SUR state */
       bool d_sur_state = IN_PARENT_NWK;
-
-      /* TODO: only for demo */
-      bool d_su_transmit_state = true;
 
       /* Time frame related variables */
       boost::random::mt19937 seed_gen;
@@ -169,7 +171,6 @@ namespace gr
       bool is_channel_available = false;
       double d_ss_threshold_dBm = 10; // dBm, 50% of 20dBm.
       double d_avg_power = 0; // W.
-      double d_avg_power_dBm = 0; // dBm
       uint32_t d_avg_power_count = 0;
 
       /* Beacon duration */
@@ -181,6 +182,11 @@ namespace gr
       uint16_t d_control_thread_state = NULL_STATE;
 
       /* Transmission thread */
+      const int cca_time = 1; // ms
+      const int cca_threshold = 10; // dBm
+      const int max_csma_ca_backoffs = 10;
+      bool d_cca_state = false;
+
       const long unsigned int d_transmit_queue_size = 128;
 
       boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
@@ -293,7 +299,8 @@ namespace gr
        * OUT:
        * - current_working_channel.
        */
-      uint32_t get_current_working_channel_from_seed(uint32_t seed);
+      uint32_t
+      get_current_working_channel_from_seed (uint32_t seed);
 
       /**
        * @brief   Perform local spectrum sensing within sensing time period.
@@ -305,6 +312,25 @@ namespace gr
        */
       void
       spectrum_sensing (void);
+
+      /**
+       * @brief   Clear channel assessment. Return whether channel is busy or not
+       * after cca_time.
+       *
+       * @param[in] cca_time (ms), time to measure channel's availability.
+       * @param[in] ed_threshold (in dBm), threshold for energy detection.
+       *
+       * @return    true when channel is available. False, otherwise.
+       *
+       * Used private vars:
+       * - d_avg_power
+       * - d_cca_state
+       * - d_avg_power_count
+       * - work function will output average channel power to d_avg_power while
+       * d_cca_state is being true.
+       */
+      bool
+      cca (const int cca_time, const int ed_threshold);
 
       /**
        * @brief   SUC: broadcast beacon if spectrum sensing returns channel

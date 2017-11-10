@@ -103,7 +103,7 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
     throw std::invalid_argument ("MAC address has to consist of two integers");
   d_mac_addr[0] = mac_addr[0];
   d_mac_addr[1] = mac_addr[1];
-  cout << "MAC address: " << int (d_mac_addr[0]) << "." << int(d_mac_addr[1]);
+  cout << "MAC address: " << int (d_mac_addr[0]) << "." << int (d_mac_addr[1]);
 
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));
@@ -191,7 +191,7 @@ shcs_mac_impl::work (int noutput_items, gr_vector_const_void_star &input_items,
 {
 //      dout << setprecision (3) << fixed << "work: " << noutput_items << endl;
 
-  if (d_control_thread_state != SPECTRUM_SENSING) {
+  if (d_control_thread_state != SPECTRUM_SENSING && !d_cca_state) {
     /* Not in spectrum sensing state, drop inputs */
     return noutput_items;
   }
@@ -243,7 +243,7 @@ shcs_mac_impl::channel_hopping (void)
     }
   }
 
-  current_working_channel = get_current_working_channel_from_seed(seed_tmp);
+  current_working_channel = get_current_working_channel_from_seed (seed_tmp);
   dout << scientific;
   dout << "-> new channel: " << current_working_channel + first_channel_index
       << ", " << center_freqs[current_working_channel] << endl;
@@ -256,12 +256,13 @@ shcs_mac_impl::channel_hopping (void)
 }
 
 /*------------------------------------------------------------------------*/
-uint32_t shcs_mac_impl::get_current_working_channel_from_seed(uint32_t seed)
+uint32_t
+shcs_mac_impl::get_current_working_channel_from_seed (uint32_t seed)
 {
   uint32_t temp = seed % max_prio;
   uint32_t count;
 
-  for (count = 0; count < num_of_channels-1; count++) {
+  for (count = 0; count < num_of_channels - 1; count++) {
     if (temp <= channel_prios[count]) {
       return count;
     }
@@ -278,6 +279,7 @@ shcs_mac_impl::spectrum_sensing (void)
   is_channel_available = false;
   d_avg_power = 0;
   d_avg_power_count = 0;
+  double avg_power_dBm = 0;
   d_control_thread_state = SPECTRUM_SENSING;
 
   boost::posix_time::ptime time;
@@ -292,12 +294,12 @@ shcs_mac_impl::spectrum_sensing (void)
   d_control_thread_state = NULL_STATE;
 
   /* calculate final average power */
-  d_avg_power_dBm = 10 * log10 (d_avg_power) + 30;
+  avg_power_dBm = 10 * log10 (d_avg_power) + 30;
   dout << setprecision (3) << fixed;
-  dout << "Avg power (dBm): " << d_avg_power_dBm << endl;
+  dout << "Avg power (dBm): " << avg_power_dBm << endl;
   dout << "Threshold (dBm): " << d_ss_threshold_dBm << endl;
 
-  if (d_avg_power_dBm < d_ss_threshold_dBm) {
+  if (avg_power_dBm < d_ss_threshold_dBm) {
     is_channel_available = true;
   }
   else {
@@ -305,6 +307,32 @@ shcs_mac_impl::spectrum_sensing (void)
   }
 
   is_spectrum_sensing_completed = true;
+}
+
+/*------------------------------------------------------------------------*/
+bool
+shcs_mac_impl::cca (const int cca_time, const int ed_threshold)
+{
+  d_avg_power = 0;
+  d_avg_power_count = 0;
+  double avg_power_dBm;
+
+  /* Start ED */
+  d_cca_state = true;
+
+  boost::this_thread::sleep_for (boost::chrono::milliseconds { cca_time });
+
+  /* Stop ED */
+  d_cca_state = false;
+
+  /* calculate final average power */
+  avg_power_dBm = 10 * log10 (d_avg_power) + 30;
+
+  if (avg_power_dBm < ed_threshold) {
+    return true;
+  }
+
+  return false;
 }
 
 /*------------------------------------------------------------------------*/
@@ -316,7 +344,7 @@ shcs_mac_impl::beacon_duration (void)
   dout << time << ": Beacon duration" << endl;
 
   if ((d_nwk_dev_type == SUC)
-        || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
+      || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
     /* SUC: Broadcast beacon */
     d_control_thread_state = BEACON;
     is_beacon_received = true; // always true for SUC.
@@ -340,9 +368,9 @@ shcs_mac_impl::beacon_duration (void)
     le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
     if ((d_msg_len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
-                                               d_broadcast_addr, 2,
-                                               pan_id_le, pan_id_le, flags,
-                                               d_seq_nr++)) == 0) {
+                                               d_broadcast_addr, 2, pan_id_le,
+                                               pan_id_le, flags, d_seq_nr++))
+        == 0) {
       dout << "Beacon header error." << endl;
     }
     else {
@@ -360,12 +388,21 @@ shcs_mac_impl::beacon_duration (void)
       d_msg[d_msg_len++] = 0;
 
       /* Prepare the beacon payload */
+      /* Control byte */
+      uint8_t control_byte = 0;
+      control_byte |= d_assoc_current_sur_state << ASSOC_CURRENT_SUR_STATE_POS;
+      d_msg[d_msg_len] = control_byte;
+      d_msg_len++;
+
+      /* SUC ID */
       uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
       d_msg_len += 2;
 
+      /* Sensing time */
       uint16_to_buffer (Tss, &d_msg[d_msg_len]);
       d_msg_len += 2;
 
+      /* Current rand seed */
       if (d_nwk_dev_type == SUC) {
         uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
       }
@@ -421,13 +458,6 @@ shcs_mac_impl::data_duration (void)
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << time << ": Data Duration" << endl;
 
-  /* TODO: for demo */
-  if (d_nwk_dev_type == SU && !d_su_transmit_state) {
-    d_control_thread_state = NULL_STATE;
-    dout << "Sleeping" << endl;
-    return;
-  }
-
   if ((is_channel_available) && (is_beacon_received)
       && (!is_busy_signal_received)) {
     d_control_thread_state = DATA_TRANSMISSION;
@@ -458,9 +488,9 @@ shcs_mac_impl::reload_tasks (void)
     d_sur_state = !d_sur_state;
   }
 
-  /* TODO: for demo */
-  if (d_nwk_dev_type == SU) {
-    d_su_transmit_state = !d_su_transmit_state;
+  /* SUC: switch current SUR should-be state */
+  if (d_nwk_dev_type == SUC) {
+    d_assoc_current_sur_state = !d_assoc_current_sur_state;
   }
 
   /* Perform channel hopping */
@@ -511,9 +541,9 @@ shcs_mac_impl::suc_control_thread (void)
   dout << "Coordinator control thread created." << endl;
 
   /* Seed RNGs */
-  uint32_t seed = seed_gen();
-  rng.seed(seed);
-  dout << "RNG1 seed: " << seed << endl; ;
+  uint32_t seed = seed_gen ();
+  rng.seed (seed);
+  dout << "RNG1 seed: " << seed << endl;
 
   /* Waiting for everything to settle */
   boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
@@ -576,11 +606,11 @@ shcs_mac_impl::sur_control_thread (void)
   dout << "SUR control thread created." << endl;
 
   /* Seed RNGs */
-  uint32_t seed = seed_gen();
-  rng.seed(seed);
+  uint32_t seed = seed_gen ();
+  rng.seed (seed);
   dout << "RNG1 seed: " << seed << endl;
-  seed = seed_gen();
-  rng_local.seed(seed);
+  seed = seed_gen ();
+  rng_local.seed (seed);
   dout << "RNG2 seed: " << seed << endl;
 
   /* Waiting for everything to settle */
@@ -606,6 +636,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   size_t data_index = 0;
 
   boost::posix_time::ptime time_slot_start_tmp;
+  uint8_t control_byte_tmp;
   uint16_t suc_id_tmp, Tss_tmp;
   uint32_t rand_seed_tmp;
 
@@ -655,6 +686,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         /* Skip superframe, GTS and pending address fields */
         data_index += 4;
 
+        control_byte_tmp = frame_p[data_index];
+        data_index++;
         suc_id_tmp = buffer_to_uint16 (&frame_p[data_index]);
         data_index += 2;
         Tss_tmp = buffer_to_uint16 (&frame_p[data_index]);
@@ -676,9 +709,23 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         time_slot_start = time_slot_start_tmp;
         current_rand_seed = rand_seed_tmp;
         rng.seed (current_rand_seed);
+
+        if (d_nwk_dev_type == SUR) {
+          d_sur_state =
+              (bool) ((control_byte_tmp >> ASSOC_CURRENT_SUR_STATE_POS) & 0x01);
+          dout << "SUR current state: ";
+          if (d_sur_state == IN_PARENT_NWK) {
+            dout << "IN_PARENT_NWK" << endl;
+          }
+          else {
+            dout << "IN_LOCAL_NWK" << endl;
+          }
+        }
+
         d_su_connected = true;
 
-        dout << "Received SUC ID: " << hex << d_assoc_suc_id << dec << endl;
+        dout << "Control byte: 0x" << hex << control_byte_tmp << dec << endl;
+        dout << "Received SUC ID: 0x" << hex << d_assoc_suc_id << dec << endl;
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
         dout << "Next time slot start: " << time_slot_start << endl;
@@ -772,8 +819,7 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
     return;
   }
 
-  dout << "MAC: new RIME msg, len: "
-      << pmt::blob_length (blob) << endl;
+  dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
   if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR) && !d_su_connected) {
@@ -785,7 +831,8 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
 //      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
   uint8_t dest_suc_id = ((uint8_t*) pmt::blob_data (blob))[0];
   if (d_nwk_dev_type == SUR && dest_suc_id != d_assoc_suc_id) {
-    dout << "SUR: push to transmit queue local, dest: " << int(dest_suc_id) << endl;
+    dout << "SUR: push to transmit queue local, dest: " << int (dest_suc_id)
+        << endl;
 
     if (!transmit_queue_local.push (blob)) {
       dout << "MAC: push packet to transmit_queue failed." << endl;
@@ -813,6 +860,16 @@ shcs_mac_impl::transmit_thread (void)
   pmt::pmt_t blob;
 
   dout << "Transmit thread created." << endl;
+//
+//  while (1) {
+//    if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
+//      continue;
+//    }
+//
+//    if (transmit_queue.read_available () > 0) {
+//
+//    }
+//  }
 
   while (1) {
     try {
@@ -989,7 +1046,8 @@ shcs_mac_impl::reporting_thread_func (void)
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "
-        << d_num_bytes_received * 8 / 1024 / d_reporting_period << " kbit/s" << std::endl;
+        << d_num_bytes_received * 8 / 1024 / d_reporting_period << " kbit/s"
+        << std::endl;
 
     count++;
   }
