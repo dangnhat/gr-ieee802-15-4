@@ -182,17 +182,23 @@ namespace gr
       uint16_t d_control_thread_state = NULL_STATE;
 
       /* Transmission thread */
-      const int cca_time = 1; // ms
-      const int cca_threshold = 10; // dBm
-      const int max_csma_ca_backoffs = 10;
-      bool d_cca_state = false;
+      bool d_su_connected = false;
 
+      /* Transmit queue */
       const long unsigned int d_transmit_queue_size = 128;
-
       boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
       boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue {
           d_transmit_queue_size };
-      bool d_su_connected = false;
+
+      /* CCA */
+      const int cca_time = 1; // ms
+      const int cca_threshold = 10; // dBm
+      bool d_cca_state = false;
+
+      /* CSMA-CA */
+      const int max_csma_ca_backoffs = 10;
+      const int max_csma_ca_be = 3; /* maximum backoff exponential */
+      const int csma_ca_backoff_unit = 10; /* in ms */
 
       /* For SUR only */
       boost::shared_ptr<gr::thread::thread> transmit_thread_local_ptr;
@@ -331,6 +337,22 @@ namespace gr
        */
       bool
       cca (const int cca_time, const int ed_threshold);
+
+      /**
+       * @brief   Perform CCA before sending packet.
+       *
+       * @param[in] packet to send.
+       *
+       * @return    true when successful. False, otherwise.
+       *
+       * Used private vars:
+       * - max_csma_ca_backoffs
+       * - max_csma_ca_be
+       * - csma_ca_backoff_unit
+       * - d_msg, d_msg_len: packet we need to send.
+       */
+      bool
+      csma_ca_send (void);
 
       /**
        * @brief   SUC: broadcast beacon if spectrum sensing returns channel
