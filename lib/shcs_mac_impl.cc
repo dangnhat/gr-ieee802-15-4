@@ -311,7 +311,7 @@ shcs_mac_impl::spectrum_sensing (void)
 
 /*------------------------------------------------------------------------*/
 bool
-shcs_mac_impl::cca (const int cca_time, const int ed_threshold)
+shcs_mac_impl::cca (void)
 {
   d_avg_power = 0;
   d_avg_power_count = 0;
@@ -328,11 +328,72 @@ shcs_mac_impl::cca (const int cca_time, const int ed_threshold)
   /* calculate final average power */
   avg_power_dBm = 10 * log10 (d_avg_power) + 30;
 
-  if (avg_power_dBm < ed_threshold) {
+  if (avg_power_dBm < cca_threshold) {
     return true;
   }
 
   return false;
+}
+
+/*------------------------------------------------------------------------*/
+void
+shcs_mac_impl::phy_transmit (void)
+{
+  message_port_pub (
+      pmt::mp ("pdu out"),
+      pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+}
+
+/*------------------------------------------------------------------------*/
+bool
+shcs_mac_impl::csma_ca_send (uint16_t transmit_state)
+{
+  int num_of_backoffs = 0, backoff_exp = 0;
+  int backoff_time, backoff_time_max;
+
+  /* First time transmit */
+  while (d_control_thread_state != transmit_state) {
+    boost::this_thread::sleep_for (boost::chrono::milliseconds { 1 });
+  }
+
+  /* Perform CCA */
+  if (cca ()) {
+    /* Channel is idle, transmit data */
+    phy_transmit ();
+//    dout << "transmitted" << endl;
+    return true;
+  }
+
+  while (1) {
+    /* Calculate backoff time */
+    backoff_time_max = (int) pow (2, backoff_exp);
+    backoff_time = (rand () % backoff_time_max) * csma_ca_backoff_unit;
+
+//    dout << "backoff time max " << backoff_time_max << endl;
+//    dout << "backoff " << backoff_time << "ms" << endl;
+    boost::this_thread::sleep_for (
+        boost::chrono::milliseconds { backoff_time });
+
+    /* Wait until transmit state */
+    while (d_control_thread_state != transmit_state) {
+      boost::this_thread::sleep_for (boost::chrono::milliseconds { 1 });
+    }
+
+    /* Perform CCA */
+    if (cca ()) {
+      /* Channel is idle, transmit data */
+      phy_transmit ();
+//      dout << "transmitted" << endl;
+      return true;
+    }
+
+    /* Channel is busy */
+    backoff_exp = min (backoff_exp + 1, max_csma_ca_be);
+    num_of_backoffs++;
+    if (num_of_backoffs > max_csma_ca_backoffs) {
+      return false;
+    }
+  }
 }
 
 /*------------------------------------------------------------------------*/
@@ -549,6 +610,76 @@ shcs_mac_impl::suc_control_thread (void)
   boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
 
   time_slot_start = boost::posix_time::microsec_clock::universal_time ();
+
+  /* TEST */
+  /* Broadcast beacon */
+  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+  uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
+      | IEEE802154_FCF_SRC_ADDR_VOID;
+  d_msg_len = 0;
+  le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
+
+  if ((d_msg_len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
+                                             d_broadcast_addr, 2, pan_id_le,
+                                             pan_id_le, flags, d_seq_nr++))
+      == 0) {
+    dout << "Beacon header error." << endl;
+  }
+  else {
+    /* Copy header to MAC frame */
+    memcpy (d_msg, mhr, d_msg_len);
+
+    /* Superframe Specification field */
+    d_msg[d_msg_len++] = 0x00;
+    d_msg[d_msg_len++] = 0xc0;
+
+    /* GTS Specification field */
+    d_msg[d_msg_len++] = 0;
+
+    /* Pending Address Specification field */
+    d_msg[d_msg_len++] = 0;
+
+    /* Prepare the beacon payload */
+    /* Control byte */
+    uint8_t control_byte = 0;
+    control_byte |= d_assoc_current_sur_state << ASSOC_CURRENT_SUR_STATE_POS;
+    d_msg[d_msg_len] = control_byte;
+    d_msg_len++;
+
+    /* SUC ID */
+    uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
+    d_msg_len += 2;
+
+    /* Sensing time */
+    uint16_to_buffer (Tss, &d_msg[d_msg_len]);
+    d_msg_len += 2;
+
+    /* Current rand seed */
+    if (d_nwk_dev_type == SUC) {
+      uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
+    }
+    else {
+      /* SUR */
+      uint32_to_buffer (current_rand_seed_local, &d_msg[d_msg_len]);
+    }
+    d_msg_len += 4;
+
+    /* Calculate FCS */
+    uint16_t fcs = crc16 (d_msg, d_msg_len);
+
+    /* Add FCS to frame */
+    d_msg[d_msg_len++] = (uint8_t) fcs;
+    d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
+  }
+
+  d_control_thread_state = DATA_TRANSMISSION;
+  while (1) {
+    boost::this_thread::sleep_for (boost::chrono::seconds { 1 });
+
+    if (!csma_ca_send (DATA_TRANSMISSION)) {
+      dout << "Send failed" << endl;
+    }
+  }
 
   /* Reload tasks */
   reload_tasks ();
@@ -1043,6 +1174,16 @@ shcs_mac_impl::reporting_thread_func (void)
 
     /* Sleep for 5s  */
     boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
+
+    /* TEST */
+    if (d_control_thread_state == DATA_TRANSMISSION) {
+      d_control_thread_state = DATA_TRANSMISSION_LOCAL;
+      dout << d_control_thread_state << endl;
+    }
+    else {
+      d_control_thread_state = DATA_TRANSMISSION;
+      dout << d_control_thread_state << endl;
+    }
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "

@@ -41,6 +41,7 @@ namespace gr
       BEACON,
       REPORTING,
       DATA_TRANSMISSION,
+      DATA_TRANSMISSION_LOCAL,
       RELOADING
     };
 
@@ -192,13 +193,18 @@ namespace gr
 
       /* CCA */
       const int cca_time = 1; // ms
-      const int cca_threshold = 10; // dBm
+      const int cca_threshold = 7; // dBm
       bool d_cca_state = false;
 
       /* CSMA-CA */
       const int max_csma_ca_backoffs = 10;
-      const int max_csma_ca_be = 3; /* maximum backoff exponential */
-      const int csma_ca_backoff_unit = 10; /* in ms */
+      const int max_csma_ca_be = 5; /* maximum backoff exponential */
+      const int csma_ca_backoff_unit = 1; /* in ms */
+
+      /* CSMA-CA rsend */
+      const int max_retries = 3;
+      bool d_is_ack_received = false, d_is_ack_received_local = false;
+
 
       /* For SUR only */
       boost::shared_ptr<gr::thread::thread> transmit_thread_local_ptr;
@@ -334,14 +340,43 @@ namespace gr
        * - d_avg_power_count
        * - work function will output average channel power to d_avg_power while
        * d_cca_state is being true.
+       * - cca_time, cca_threshold
        */
       bool
-      cca (const int cca_time, const int ed_threshold);
+      cca (void);
 
       /**
-       * @brief   Perform CCA before sending packet.
+       * @brief   PHY transmit. Send data in d_msg, d_msg_len to physical layer.
        *
-       * @param[in] packet to send.
+       * Used private vars:
+       * - d_msg.
+       * - d_msg_len.
+       */
+      void
+      phy_transmit (void);
+
+      /**
+       * @brief   Perform CCA before sending packet. Calling thread will sleep
+       * when it's waiting. It will only transmit when control_thread_state is
+       * at a specified state.
+       *
+       * @param[in] transmit_state. It will wait until control thread is in
+       *            this state before sending.
+       *
+       * @return    true when successful. False, otherwise.
+       *
+       * Used private vars:
+       * - max_csma_ca_backoffs
+       * - max_csma_ca_be
+       * - csma_ca_backoff_unit
+       * - d_msg, d_msg_len: packet we need to send.
+       * - d_control_thread_state
+       */
+      bool
+      csma_ca_send (uint16_t transmit_state);
+
+      /**
+       * @brief   Perform reliable CSMA CA unicast with Idle RQ.
        *
        * @return    true when successful. False, otherwise.
        *
@@ -352,7 +387,7 @@ namespace gr
        * - d_msg, d_msg_len: packet we need to send.
        */
       bool
-      csma_ca_send (void);
+      csma_ca_rsend (void);
 
       /**
        * @brief   SUC: broadcast beacon if spectrum sensing returns channel
