@@ -337,53 +337,45 @@ shcs_mac_impl::cca (void)
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::phy_transmit (void)
+shcs_mac_impl::phy_transmit (const uint8_t *buf, int len)
 {
   message_port_pub (
       pmt::mp ("pdu out"),
-      pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+      pmt::cons (pmt::PMT_NIL, pmt::make_blob (buf, len)));
 }
 
 /*------------------------------------------------------------------------*/
 bool
-shcs_mac_impl::csma_ca_send (uint16_t transmit_state)
+shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int len)
 {
   int num_of_backoffs = 0, backoff_exp = 0;
   int backoff_time, backoff_time_max;
 
-  /* First time transmit */
-  while (d_control_thread_state != transmit_state) {
-    boost::this_thread::sleep_for (boost::chrono::milliseconds { 1 });
-  }
-
-  /* Perform CCA */
-  if (cca ()) {
-    /* Channel is idle, transmit data */
-    phy_transmit ();
-//    dout << "transmitted" << endl;
-    return true;
-  }
-
   while (1) {
     /* Calculate backoff time */
-    backoff_time_max = (int) pow (2, backoff_exp);
-    backoff_time = (rand () % backoff_time_max) * csma_ca_backoff_unit;
+    backoff_time_max = (int) (pow (2, backoff_exp) - 1);
 
-//    dout << "backoff time max " << backoff_time_max << endl;
-//    dout << "backoff " << backoff_time << "ms" << endl;
-    boost::this_thread::sleep_for (
-        boost::chrono::milliseconds { backoff_time });
+    if (backoff_time_max != 0) {
+      backoff_time = (rand () % backoff_time_max) * csma_ca_backoff_unit;
+
+      dout << "backoff time max " << backoff_time_max << endl;
+      dout << "backoff " << backoff_time << "ms" << endl;
+      boost::this_thread::sleep_for (
+          boost::chrono::milliseconds { backoff_time });
+    }
 
     /* Wait until transmit state */
+    gr::thread::scoped_lock lock (d_tx_m);
     while (d_control_thread_state != transmit_state) {
-      boost::this_thread::sleep_for (boost::chrono::milliseconds { 1 });
+      d_tx_cv.wait (lock);
     }
+    lock.unlock ();
 
     /* Perform CCA */
     if (cca ()) {
       /* Channel is idle, transmit data */
-      phy_transmit ();
-//      dout << "transmitted" << endl;
+      phy_transmit (buf, len);
+      dout << "transmitted" << endl;
       return true;
     }
 
@@ -397,12 +389,36 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state)
 }
 
 /*------------------------------------------------------------------------*/
+bool
+shcs_mac_impl::csma_ca_rsend (uint16_t transmit_state, uint8_t *buf, int len)
+{
+  uint8_t dest_addr[8], seqno;
+  le_uint16_t dest_panid;
+
+  /* Get dest address and seqno*/
+  ieee802154_get_dst(buf, dest_addr, &dest_panid);
+  seqno = ieee802154_get_seq(buf);
+
+  for (int count = 0; count < max_retries; count++) {
+    /* Send data */
+    dout << "Send try " << count << endl;
+    csma_ca_send(transmit_state, buf, len);
+
+    /* Wait for ACK */
+
+
+  }
+}
+
+/*------------------------------------------------------------------------*/
 void
 shcs_mac_impl::beacon_duration (void)
 {
   boost::posix_time::ptime time;
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << time << ": Beacon duration" << endl;
+  uint8_t buf[256];
+  int len;
 
   if ((d_nwk_dev_type == SUC)
       || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
@@ -425,10 +441,10 @@ shcs_mac_impl::beacon_duration (void)
     uint8_t mhr[IEEE802154_MAX_HDR_LEN];
     uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
         | IEEE802154_FCF_SRC_ADDR_VOID;
-    d_msg_len = 0;
+    len = 0;
     le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
-    if ((d_msg_len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
+    if ((len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
                                                d_broadcast_addr, 2, pan_id_le,
                                                pan_id_le, flags, d_seq_nr++))
         == 0) {
@@ -436,55 +452,53 @@ shcs_mac_impl::beacon_duration (void)
     }
     else {
       /* Copy header to MAC frame */
-      memcpy (d_msg, mhr, d_msg_len);
+      memcpy (buf, mhr, len);
 
       /* Superframe Specification field */
-      d_msg[d_msg_len++] = 0x00;
-      d_msg[d_msg_len++] = 0xc0;
+      buf[len++] = 0x00;
+      buf[len++] = 0xc0;
 
       /* GTS Specification field */
-      d_msg[d_msg_len++] = 0;
+      buf[len++] = 0;
 
       /* Pending Address Specification field */
-      d_msg[d_msg_len++] = 0;
+      buf[len++] = 0;
 
       /* Prepare the beacon payload */
       /* Control byte */
       uint8_t control_byte = 0;
       control_byte |= d_assoc_current_sur_state << ASSOC_CURRENT_SUR_STATE_POS;
-      d_msg[d_msg_len] = control_byte;
-      d_msg_len++;
+      buf[len] = control_byte;
+      len++;
 
       /* SUC ID */
-      uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
-      d_msg_len += 2;
+      uint16_to_buffer (d_suc_id, &buf[len]);
+      len += 2;
 
       /* Sensing time */
-      uint16_to_buffer (Tss, &d_msg[d_msg_len]);
-      d_msg_len += 2;
+      uint16_to_buffer (Tss, &buf[len]);
+      len += 2;
 
       /* Current rand seed */
       if (d_nwk_dev_type == SUC) {
-        uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
+        uint32_to_buffer (current_rand_seed, &buf[len]);
       }
       else {
         /* SUR */
-        uint32_to_buffer (current_rand_seed_local, &d_msg[d_msg_len]);
+        uint32_to_buffer (current_rand_seed_local, &buf[len]);
       }
-      d_msg_len += 4;
+      len += 4;
 
       /* Calculate FCS */
-      uint16_t fcs = crc16 (d_msg, d_msg_len);
+      uint16_t fcs = crc16 (buf, len);
 
       /* Add FCS to frame */
-      d_msg[d_msg_len++] = (uint8_t) fcs;
-      d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
+      buf[len++] = (uint8_t) fcs;
+      buf[len++] = (uint8_t) (fcs >> 8);
 
       /* Broadcast beacon */
-      print_message (d_msg, d_msg_len);
-      message_port_pub (
-          pmt::mp ("pdu out"),
-          pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+      print_message (buf, len);
+      phy_transmit(buf, len);
     }
   }
   else {
@@ -519,18 +533,19 @@ shcs_mac_impl::data_duration (void)
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << time << ": Data Duration" << endl;
 
-  if ((is_channel_available) && (is_beacon_received)
-      && (!is_busy_signal_received)) {
-    d_control_thread_state = DATA_TRANSMISSION;
-    dout << "Channel is available: DATA_TRANSMISSION state, " << endl;
+  if ((is_channel_available) && (!is_busy_signal_received)) {
 
     /* Wake transmit_thread up */
     if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK)) {
-      transmit_thread_local_ptr->interrupt ();
+      d_control_thread_state = DATA_TRANSMISSION_LOCAL;
+      dout << "Channel is available: DATA_TRANSMISSION_LOCAL state, " << endl;
     }
     else {
-      transmit_thread_ptr->interrupt ();
+      d_control_thread_state = DATA_TRANSMISSION;
+      dout << "Channel is available: DATA_TRANSMISSION state, " << endl;
     }
+
+    d_tx_cv.notify_all ();
   }
   else {
     d_control_thread_state = NULL_STATE;
@@ -613,6 +628,9 @@ shcs_mac_impl::suc_control_thread (void)
 
   /* TEST */
   /* Broadcast beacon */
+  uint8_t d_msg[256];
+  int d_msg_len;
+
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
   uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
       | IEEE802154_FCF_SRC_ADDR_VOID;
@@ -676,7 +694,7 @@ shcs_mac_impl::suc_control_thread (void)
   while (1) {
     boost::this_thread::sleep_for (boost::chrono::seconds { 1 });
 
-    if (!csma_ca_send (DATA_TRANSMISSION)) {
+    if (!csma_ca_send (DATA_TRANSMISSION, d_msg, d_msg_len)) {
       dout << "Send failed" << endl;
     }
   }
@@ -1002,70 +1020,70 @@ shcs_mac_impl::transmit_thread (void)
 //    }
 //  }
 
-  while (1) {
-    try {
-      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
-    }
-    catch (boost::thread_interrupted&) {
-      dout << "Transmit_t: Interrupted, woke up." << endl;
-
-      /* Check current control state */
-      if (d_control_thread_state == DATA_TRANSMISSION) {
-        if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
-          dout << "SUR: not in parent nwk -> sleep" << endl;
-          continue;
-        }
-
-        /* Transmit data in transmit_queue */
-        while (transmit_queue.pop (blob)) {
-          print_message ((uint8_t*) pmt::blob_data (blob),
-                         pmt::blob_length (blob));
-          generate_mac ((const uint8_t*) pmt::blob_data (blob),
-                        pmt::blob_length (blob));
-          message_port_pub (
-              pmt::mp ("pdu out"),
-              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
-        }
-      }
-    }
-  }/* end while */
+//  while (1) {
+//    try {
+//      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
+//    }
+//    catch (boost::thread_interrupted&) {
+//      dout << "Transmit_t: Interrupted, woke up." << endl;
+//
+//      /* Check current control state */
+//      if (d_control_thread_state == DATA_TRANSMISSION) {
+//        if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
+//          dout << "SUR: not in parent nwk -> sleep" << endl;
+//          continue;
+//        }
+//
+//        /* Transmit data in transmit_queue */
+//        while (transmit_queue.pop (blob)) {
+//          print_message ((uint8_t*) pmt::blob_data (blob),
+//                         pmt::blob_length (blob));
+//          generate_mac ((const uint8_t*) pmt::blob_data (blob),
+//                        pmt::blob_length (blob));
+//          message_port_pub (
+//              pmt::mp ("pdu out"),
+//              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+//        }
+//      }
+//    }
+//  }/* end while */
 }
 
 /*------------------------------------------------------------------------*/
 void
 shcs_mac_impl::transmit_thread_local (void)
 {
-  pmt::pmt_t blob;
-
-  dout << "Transmit thread local (SUR) created." << endl;
-
-  while (1) {
-    try {
-      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
-    }
-    catch (boost::thread_interrupted&) {
-      dout << "Transmit_local_t: Interrupted, woke up." << endl;
-
-      /* Check current control state */
-      if (d_control_thread_state == DATA_TRANSMISSION) {
-        if (d_sur_state != IN_LOCAL_NWK) {
-          dout << "SUR: not in local nwk -> sleep" << endl;
-          return;
-        }
-
-        /* Transmit data in transmit_queue */
-        while (transmit_queue_local.pop (blob)) {
-          print_message ((uint8_t*) pmt::blob_data (blob),
-                         pmt::blob_length (blob));
-          generate_mac ((const uint8_t*) pmt::blob_data (blob),
-                        pmt::blob_length (blob));
-          message_port_pub (
-              pmt::mp ("pdu out"),
-              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
-        }
-      }
-    }
-  }/* end while */
+//  pmt::pmt_t blob;
+//
+//  dout << "Transmit thread local (SUR) created." << endl;
+//
+//  while (1) {
+//    try {
+//      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
+//    }
+//    catch (boost::thread_interrupted&) {
+//      dout << "Transmit_local_t: Interrupted, woke up." << endl;
+//
+//      /* Check current control state */
+//      if (d_control_thread_state == DATA_TRANSMISSION) {
+//        if (d_sur_state != IN_LOCAL_NWK) {
+//          dout << "SUR: not in local nwk -> sleep" << endl;
+//          return;
+//        }
+//
+//        /* Transmit data in transmit_queue */
+//        while (transmit_queue_local.pop (blob)) {
+//          print_message ((uint8_t*) pmt::blob_data (blob),
+//                         pmt::blob_length (blob));
+//          generate_mac ((const uint8_t*) pmt::blob_data (blob),
+//                        pmt::blob_length (blob));
+//          message_port_pub (
+//              pmt::mp ("pdu out"),
+//              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
+//        }
+//      }
+//    }
+//  }/* end while */
 }
 
 /*------------------------------------------------------------------------*/
@@ -1091,11 +1109,11 @@ shcs_mac_impl::crc16 (uint8_t *buf, int len)
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
+shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf, int &olen)
 {
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
   uint8_t flags = IEEE802154_FCF_TYPE_DATA | IEEE802154_FCF_SRC_ADDR_SHORT;
-  d_msg_len = 0;
+  obuf = 0;
   le_uint16_t pan_id_le;
   if (d_nwk_dev_type == SUC) {
     pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
@@ -1106,25 +1124,25 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len)
 
   /* Peak to get src addr and dest addr */
   const uint8_t* dest_addr = &buf[0];
-  if ((d_msg_len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
                                              pan_id_le, pan_id_le, flags,
                                              d_seq_nr++)) == 0) {
     dout << "MAC: header error." << endl;
   }
   else {
     /* Copy header to MAC frame */
-    memcpy (d_msg, mhr, d_msg_len);
+    memcpy (obuf, mhr, olen);
 
     /* Prepare the data payload */
-    memcpy (&d_msg[d_msg_len], buf + 2, len - 2);
-    d_msg_len += len - 2;
+    memcpy (&obuf[olen], buf + 2, len - 2);
+    olen += len - 2;
 
     /* Calculate FCS */
-    uint16_t fcs = crc16 (d_msg, d_msg_len);
+    uint16_t fcs = crc16 (obuf, olen);
 
     /* Add FCS to frame */
-    d_msg[d_msg_len++] = (uint8_t) fcs;
-    d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
+    obuf[olen++] = (uint8_t) fcs;
+    obuf[olen++] = (uint8_t) (fcs >> 8);
   }
 }
 
@@ -1176,6 +1194,7 @@ shcs_mac_impl::reporting_thread_func (void)
     boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
 
     /* TEST */
+    gr::thread::scoped_lock lock (d_tx_m);
     if (d_control_thread_state == DATA_TRANSMISSION) {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
       dout << d_control_thread_state << endl;
@@ -1184,6 +1203,7 @@ shcs_mac_impl::reporting_thread_func (void)
       d_control_thread_state = DATA_TRANSMISSION;
       dout << d_control_thread_state << endl;
     }
+    d_tx_cv.notify_all ();
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "

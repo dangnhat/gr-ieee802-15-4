@@ -111,9 +111,8 @@ namespace gr
     private:
       bool d_debug;
       int d_msg_offset;
-      int d_msg_len;
       uint8_t d_seq_nr;
-      uint8_t d_msg[256];
+      gr::thread::mutex d_seq_nr_m;
       int d_fft_len;
 
       int d_num_packet_errors;
@@ -200,11 +199,16 @@ namespace gr
       const int max_csma_ca_backoffs = 10;
       const int max_csma_ca_be = 5; /* maximum backoff exponential */
       const int csma_ca_backoff_unit = 1; /* in ms */
+      gr::thread::condition_variable d_tx_cv;
+      gr::thread::mutex d_tx_m;
 
       /* CSMA-CA rsend */
       const int max_retries = 3;
-      bool d_is_ack_received = false, d_is_ack_received_local = false;
-
+      const int max_retry_timeout = 100; /* ms */
+      gr::thread::condition_variable d_ack_received_cv;
+      gr::thread::mutex d_ack_m;
+      uint8_t d_ack_src_addr[2];
+      uint8_t d_ack_recv_seq_nr;
 
       /* For SUR only */
       boost::shared_ptr<gr::thread::thread> transmit_thread_local_ptr;
@@ -269,9 +273,11 @@ namespace gr
        *
        * @param[in]   buf, buffer.
        * @param[in]   len, buffer length.
+       * @param[out]  obuf, output buffer.
+       * @param[in]   olen, output buffer length.
        */
       void
-      generate_mac (const uint8_t *buf, int len);
+      generate_mac (const uint8_t *buf, int len, uint8_t *obuf, int &olen);
 
       /**
        * @brief   Calculate CRC16 checksum for a buffer.
@@ -348,12 +354,9 @@ namespace gr
       /**
        * @brief   PHY transmit. Send data in d_msg, d_msg_len to physical layer.
        *
-       * Used private vars:
-       * - d_msg.
-       * - d_msg_len.
        */
       void
-      phy_transmit (void);
+      phy_transmit (const uint8_t *buf, int len);
 
       /**
        * @brief   Perform CCA before sending packet. Calling thread will sleep
@@ -373,21 +376,33 @@ namespace gr
        * - d_control_thread_state
        */
       bool
-      csma_ca_send (uint16_t transmit_state);
+      csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int len);
 
       /**
        * @brief   Perform reliable CSMA CA unicast with Idle RQ.
        *
+       * @param[in] transmit_state. It will wait until control thread is in
+       *            this state before sending.
+       *
        * @return    true when successful. False, otherwise.
        *
        * Used private vars:
-       * - max_csma_ca_backoffs
-       * - max_csma_ca_be
-       * - csma_ca_backoff_unit
-       * - d_msg, d_msg_len: packet we need to send.
+       * - max_retries, max_retry_timeout
+       * - d_ack_received_cv, d_ack_m
+       * - d_ack_src_addr[2], d_ack_recv_seq_nr
        */
       bool
-      csma_ca_rsend (void);
+      csma_ca_rsend (uint16_t transmit_state, uint8_t *buf, int len);
+
+      /**
+       * @brief   Safely increase seqno with mutex.
+       */
+      inline void
+      safe_inc_seqno (void)
+      {
+        gr::thread::scoped_lock lock (d_seq_nr_m);
+        d_seq_nr++;
+      }
 
       /**
        * @brief   SUC: broadcast beacon if spectrum sensing returns channel

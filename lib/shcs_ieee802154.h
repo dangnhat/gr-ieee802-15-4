@@ -234,6 +234,20 @@ static inline uint8_t ieee802154_get_seq(const uint8_t *mhr)
 }
 
 /**
+ * @brief   Sets sequence number to MAC header.
+ *
+ * @pre length of allocated space at @p mhr > 3
+ *
+ * @param[in] mhr   MAC header.
+ * @papam[in] seqno New sequence number.
+ *
+ */
+static inline void ieee802154_set_seq(uint8_t *mhr, uint8_t seqno)
+{
+    mhr[2] = seqno;
+}
+
+/**
  * @brief   Generates an IPv6 interface identifier from an IEEE 802.15.4 address.
  *
  * @pre (@p eui64 != NULL) && (@p addr != NULL)
