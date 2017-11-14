@@ -339,19 +339,26 @@ shcs_mac_impl::cca (void)
 void
 shcs_mac_impl::phy_transmit (const uint8_t *buf, int len)
 {
-  message_port_pub (
-      pmt::mp ("pdu out"),
-      pmt::cons (pmt::PMT_NIL, pmt::make_blob (buf, len)));
+  message_port_pub (pmt::mp ("pdu out"),
+                    pmt::cons (pmt::PMT_NIL, pmt::make_blob (buf, len)));
 }
 
 /*------------------------------------------------------------------------*/
 bool
-shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int len)
+shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
+                             int len)
 {
   int num_of_backoffs = 0, backoff_exp = 0;
   int backoff_time, backoff_time_max;
 
   while (1) {
+    /* Wait until transmit state */
+    gr::thread::scoped_lock lock (d_tx_m);
+    while (d_control_thread_state != transmit_state) {
+      d_tx_cv.wait (lock);
+    }
+    lock.unlock ();
+
     /* Calculate backoff time */
     backoff_time_max = (int) (pow (2, backoff_exp) - 1);
 
@@ -362,14 +369,12 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int le
       dout << "backoff " << backoff_time << "ms" << endl;
       boost::this_thread::sleep_for (
           boost::chrono::milliseconds { backoff_time });
-    }
 
-    /* Wait until transmit state */
-    gr::thread::scoped_lock lock (d_tx_m);
-    while (d_control_thread_state != transmit_state) {
-      d_tx_cv.wait (lock);
+      if (d_control_thread_state != transmit_state) {
+        /* Cancel current backoff and do it again in next time slot */
+        continue;
+      }
     }
-    lock.unlock ();
 
     /* Perform CCA */
     if (cca ()) {
@@ -390,24 +395,44 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int le
 
 /*------------------------------------------------------------------------*/
 bool
-shcs_mac_impl::csma_ca_rsend (uint16_t transmit_state, uint8_t *buf, int len)
+shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
+                              uint16_t transmit_state, const uint8_t *buf,
+                              int len)
 {
-  uint8_t dest_addr[8], seqno;
-  le_uint16_t dest_panid;
+  uint8_t seqno, backup_buf[256];
+//  uint8_t dest_addr[8];
+//  le_uint16_t dest_panid;
+
+  /* Backup buffer */
+  memcpy (backup_buf, buf, len);
 
   /* Get dest address and seqno*/
-  ieee802154_get_dst(buf, dest_addr, &dest_panid);
-  seqno = ieee802154_get_seq(buf);
+//  ieee802154_get_dst (backup_buf, dest_addr, &dest_panid);
+  seqno = ieee802154_get_seq (backup_buf);
 
   for (int count = 0; count < max_retries; count++) {
+    d_ack_recv_seq_nr[transmit_thread_id] = seqno; /* Expecting seqno */
+
     /* Send data */
     dout << "Send try " << count << endl;
-    csma_ca_send(transmit_state, buf, len);
+    csma_ca_send (transmit_state, buf, len);
 
     /* Wait for ACK */
+    gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
+    d_is_ack_received[transmit_thread_id] = false;
 
+    d_ack_received_cv[transmit_thread_id].timed_wait (
+        lock, boost::posix_time::milliseconds (max_retry_timeout));
 
+    if (d_is_ack_received[transmit_thread_id]) {
+      /* ACK received */
+      dout << "ACKed " << seqno << endl;
+      return true;
+    }
   }
+
+  dout << "Rsend failed" << endl;
+  return false;
 }
 
 /*------------------------------------------------------------------------*/
@@ -444,10 +469,9 @@ shcs_mac_impl::beacon_duration (void)
     len = 0;
     le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
 
-    if ((len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
-                                               d_broadcast_addr, 2, pan_id_le,
-                                               pan_id_le, flags, d_seq_nr++))
-        == 0) {
+    if ((len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, d_broadcast_addr,
+                                         2, pan_id_le, pan_id_le, flags,
+                                         d_seq_nr++)) == 0) {
       dout << "Beacon header error." << endl;
     }
     else {
@@ -498,7 +522,7 @@ shcs_mac_impl::beacon_duration (void)
 
       /* Broadcast beacon */
       print_message (buf, len);
-      phy_transmit(buf, len);
+      phy_transmit (buf, len);
     }
   }
   else {
@@ -536,6 +560,7 @@ shcs_mac_impl::data_duration (void)
   if ((is_channel_available) && (!is_busy_signal_received)) {
 
     /* Wake transmit_thread up */
+    gr::thread::scoped_lock lock (d_tx_m);
     if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK)) {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
       dout << "Channel is available: DATA_TRANSMISSION_LOCAL state, " << endl;
@@ -545,6 +570,7 @@ shcs_mac_impl::data_duration (void)
       dout << "Channel is available: DATA_TRANSMISSION state, " << endl;
     }
 
+    lock.unlock ();
     d_tx_cv.notify_all ();
   }
   else {
@@ -921,8 +947,6 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   le_uint16_t dest_pan;
   int dest_addr_len = 0;
 
-  dout << "MAC: Data/ACK packet." << endl;
-
   dest_addr_len = ieee802154_get_dst (frame_p, dest, &dest_pan);
   if (dest_addr_len != 2) {
     dout << "MAC: Something wrong here, dest_addr_len: " << dest_addr_len
@@ -934,6 +958,29 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     dout << "MAC: not for me " << int (dest[0]) << "." << int (dest[1])
         << ", dropping packet!" << endl;
     return;
+  }
+
+  if ((frame_p[0] & 0x03) == 2) {
+    /* ACK, check seqno */
+    d_last_recv_seqno = ieee802154_get_seq (frame_p);
+    dout << "MAC: recv ACK for " << int (d_last_recv_seqno) << endl;
+
+    for (int count = 0; count < max_transmit_threads; count++) {
+      if (d_ack_recv_seq_nr[count] == d_last_recv_seqno) {
+        {
+          gr::thread::scoped_lock lock (d_ack_m[count]);
+          d_is_ack_received[count] = true;
+        }
+        d_ack_received_cv[count].notify_one ();
+        dout << "MAC: notified tx thead #" << count << endl;
+      }
+    }
+
+    return;
+  }
+
+  if ((frame_p[0] & 0x03) == 1) {
+    cout << ""
   }
 
   /* Forward to RIME layer */
@@ -1109,10 +1156,11 @@ shcs_mac_impl::crc16 (uint8_t *buf, int len)
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf, int &olen)
+shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf,
+                             int &olen)
 {
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
-  uint8_t flags = IEEE802154_FCF_TYPE_DATA | IEEE802154_FCF_SRC_ADDR_SHORT;
+  uint8_t flags = IEEE802154_FCF_TYPE_DATA;
   obuf = 0;
   le_uint16_t pan_id_le;
   if (d_nwk_dev_type == SUC) {
@@ -1125,8 +1173,8 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf, int &ol
   /* Peak to get src addr and dest addr */
   const uint8_t* dest_addr = &buf[0];
   if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
-                                             pan_id_le, pan_id_le, flags,
-                                             d_seq_nr++)) == 0) {
+                                        pan_id_le, pan_id_le, flags, d_seq_nr++))
+      == 0) {
     dout << "MAC: header error." << endl;
   }
   else {
@@ -1203,6 +1251,7 @@ shcs_mac_impl::reporting_thread_func (void)
       d_control_thread_state = DATA_TRANSMISSION;
       dout << d_control_thread_state << endl;
     }
+    lock.unlock ();
     d_tx_cv.notify_all ();
 
     /* Reporting */

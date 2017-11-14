@@ -47,7 +47,12 @@ namespace gr
 
     enum sur_state_e
     {
-      IN_LOCAL_NWK = false, IN_PARENT_NWK = true,
+      IN_LOCAL_NWK, IN_PARENT_NWK,
+    };
+
+    enum transmit_thread_id_e
+    {
+      TX_THREAD_LOCAL = 0, TX_THREAD_PARENT = 1,
     };
 
     class shcs_mac_impl : public shcs_mac
@@ -148,7 +153,7 @@ namespace gr
 
       bool d_ext_operation = false;
       bool d_assoc_current_sur_state = IN_PARENT_NWK; // Only be used in SUC's beacon,
-                                                      // should always be IN_PARENT_NWK for SUR's beacon
+      // should always be IN_PARENT_NWK for SUR's beacon
       const uint8_t EXT_OP_POS = 0;
       const uint8_t ASSOC_CURRENT_SUR_STATE_POS = 1;
 
@@ -183,11 +188,12 @@ namespace gr
 
       /* Transmission thread */
       bool d_su_connected = false;
+      const int max_transmit_threads = 2;
 
       /* Transmit queue */
       const long unsigned int d_transmit_queue_size = 128;
-      boost::shared_ptr<gr::thread::thread> transmit_thread_ptr;
-      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue {
+      boost::shared_ptr<gr::thread::thread> transmit_thread_ptr[max_transmit_threads];
+      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue[max_transmit_threads] {
           d_transmit_queue_size };
 
       /* CCA */
@@ -205,15 +211,12 @@ namespace gr
       /* CSMA-CA rsend */
       const int max_retries = 3;
       const int max_retry_timeout = 100; /* ms */
-      gr::thread::condition_variable d_ack_received_cv;
-      gr::thread::mutex d_ack_m;
-      uint8_t d_ack_src_addr[2];
-      uint8_t d_ack_recv_seq_nr;
-
-      /* For SUR only */
-      boost::shared_ptr<gr::thread::thread> transmit_thread_local_ptr;
-      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue_local {
-          d_transmit_queue_size };
+      gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
+      gr::thread::mutex d_ack_m[max_transmit_threads];
+      bool d_is_ack_received[max_transmit_threads] = {false, false};
+      //uint8_t d_ack_src_addr[max_transmit_threads];
+      uint8_t d_ack_recv_seq_nr[max_transmit_threads];
+      uint8_t d_last_recv_seqno = 0;
 
       /* Reporting thread */
       const int d_reporting_period = 10; /* s */
@@ -381,8 +384,13 @@ namespace gr
       /**
        * @brief   Perform reliable CSMA CA unicast with Idle RQ.
        *
+       * @param[in] transmit_thread_id. It's used in mac_in function to wake up
+       *            correct waiting thread.
        * @param[in] transmit_state. It will wait until control thread is in
        *            this state before sending.
+       * @param[in] buf. buffer holding data. It will be backed up at the
+       *            beginning of this function.
+       * @param[in] len. Buffer length.
        *
        * @return    true when successful. False, otherwise.
        *
@@ -392,7 +400,8 @@ namespace gr
        * - d_ack_src_addr[2], d_ack_recv_seq_nr
        */
       bool
-      csma_ca_rsend (uint16_t transmit_state, uint8_t *buf, int len);
+      csma_ca_rsend (uint8_t transmit_thread_id, uint16_t transmit_state,
+                     const uint8_t *buf, int len);
 
       /**
        * @brief   Safely increase seqno with mutex.
