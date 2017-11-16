@@ -366,8 +366,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
     if (backoff_time_max != 0) {
       backoff_time = ((rand () % backoff_time_max) + 1) * csma_ca_backoff_unit;
 
-      dout << "backoff time max " << backoff_time_max << endl;
-      dout << "backoff " << backoff_time << "ms" << endl;
+//      dout << "CSMA: backoff time max " << backoff_time_max << endl;
+      dout << "CSMA: backoff " << backoff_time << "ms" << endl;
       boost::this_thread::sleep_for (
           boost::chrono::milliseconds { backoff_time });
 
@@ -381,7 +381,7 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
     if (cca ()) {
       /* Channel is idle, transmit data */
       phy_transmit (buf, len);
-      dout << "transmitted" << endl;
+      dout << "CMSA: transmitted" << endl;
       return true;
     }
 
@@ -411,12 +411,12 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 //  ieee802154_get_dst (backup_buf, dest_addr, &dest_panid);
   seqno = ieee802154_get_seq (backup_buf);
 
-  for (int count = 0; count < max_retries; count++) {
+  for (int count = 0; count < max_retries + 1; count++) { /* first time transmit is not a retry */
     d_ack_recv_seq_nr[transmit_thread_id] = seqno; /* Expecting seqno */
 
     /* Send data */
+    dout << "RSend: Send try " << count << endl;
     csma_ca_send (transmit_state, buf, len);
-    dout << "Sent try " << count << endl;
 
     /* Wait for ACK */
     gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
@@ -427,12 +427,12 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     if (d_is_ack_received[transmit_thread_id]) {
       /* ACK received */
-      dout << "Received ack for #" << int(seqno) << endl;
+      dout << "RSend: Received ack for #" << int(seqno) << endl;
       return true;
     }
   }
 
-  dout << "Rsend failed" << endl;
+  dout << "RSend: failed" << endl;
   return false;
 }
 
@@ -450,7 +450,6 @@ shcs_mac_impl::beacon_duration (void)
       || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
     /* SUC: Broadcast beacon */
     d_control_thread_state = BEACON;
-    is_beacon_received = true; // always true for SUC.
 
     if (!is_spectrum_sensing_completed) {
       dout << "Spectrum sensing is not completed, will not broadcast beacon."
@@ -528,9 +527,7 @@ shcs_mac_impl::beacon_duration (void)
   }
   else {
     /* SU: wait for beacon */
-    //is_beacon_received = false;
-    // TODO: hard-coded for demo, always assume that we have received a beaoon.
-    is_beacon_received = true;
+    is_beacon_received = false;
     d_control_thread_state = BEACON;
   }
 }
