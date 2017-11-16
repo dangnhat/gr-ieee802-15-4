@@ -40,8 +40,8 @@ namespace gr
       SPECTRUM_SENSING,
       BEACON,
       REPORTING,
-      DATA_TRANSMISSION,
       DATA_TRANSMISSION_LOCAL,
+      DATA_TRANSMISSION_PARENT,
       RELOADING
     };
 
@@ -127,17 +127,17 @@ namespace gr
       int d_nwk_dev_type;
 
       /* wireless channel configuration */
-      static const int num_of_channels = 4; // channel 23 -> 26: [2.465, ..., 2.480] GHz,
+      static const int num_of_channels = 3; // channel 23 -> 26: [2.465, ..., 2.480] GHz,
       const double channel_step = 5e6; // 5MHz step between 2 channels.
-      const int first_channel_index = 23;
-      double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
+      const int first_channel_index = 24;
+      double center_freqs[num_of_channels] = { 2.470e9 }; // channel 23: 2.465GHz.
       int max_prio = 100;
-      int channel_prios[num_of_channels - 1] = { 25, 50, 75 }; /* CDF style */
+      int channel_prios[num_of_channels - 1] = { 33, 66 }; /* CDF style */
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      const uint32_t Ts = 500; // ms, slot duration (i.e. dwelling time of a channel hop).
+      const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
       const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 20; // ms, sensing duration.
@@ -188,13 +188,13 @@ namespace gr
 
       /* Transmission thread */
       bool d_su_connected = false;
-      const int max_transmit_threads = 2;
+      static const int max_transmit_threads = 2;
 
       /* Transmit queue */
-      const long unsigned int d_transmit_queue_size = 128;
+      static const long unsigned int d_transmit_queue_size = 128;
       boost::shared_ptr<gr::thread::thread> transmit_thread_ptr[max_transmit_threads];
-      boost::lockfree::spsc_queue<pmt::pmt_t> transmit_queue[max_transmit_threads] {
-          d_transmit_queue_size };
+      boost::lockfree::spsc_queue<pmt::pmt_t,
+          boost::lockfree::capacity<d_transmit_queue_size>> transmit_queue[max_transmit_threads];
 
       /* CCA */
       const int cca_time = 1; // ms
@@ -205,18 +205,19 @@ namespace gr
       const int max_csma_ca_backoffs = 10;
       const int max_csma_ca_be = 5; /* maximum backoff exponential */
       const int csma_ca_backoff_unit = 1; /* in ms */
-      gr::thread::condition_variable d_tx_cv;
-      gr::thread::mutex d_tx_m;
+      gr::thread::condition_variable d_tx_condvar;
+      gr::thread::mutex d_tx_mutex;
 
       /* CSMA-CA rsend */
       const int max_retries = 3;
       const int max_retry_timeout = 100; /* ms */
       gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
       gr::thread::mutex d_ack_m[max_transmit_threads];
-      bool d_is_ack_received[max_transmit_threads] = {false, false};
+      bool d_is_ack_received[max_transmit_threads] = { false, false };
       //uint8_t d_ack_src_addr[max_transmit_threads];
       uint8_t d_ack_recv_seq_nr[max_transmit_threads];
       uint8_t d_last_recv_seqno = 0;
+      bool d_is_first_recv_data_frame = true;
 
       /* Reporting thread */
       const int d_reporting_period = 10; /* s */
@@ -245,13 +246,13 @@ namespace gr
        * @brief   Transmission thread.
        */
       void
-      transmit_thread (void);
+      transmit_thread_local (void);
 
       /**
        * @brief   Transmission thread in local network (for SUR).
        */
       void
-      transmit_thread_local (void);
+      transmit_thread_parent (void);
 
       /**
        * @brief   Handle package from PHY layer and forward processed package
@@ -272,15 +273,31 @@ namespace gr
       app_in (pmt::pmt_t msg);
 
       /**
-       * @brief   Generate MAC frame from a received buffer.
+       * @brief   Generate data frame from a received buffer and store frame to
+       *          output buffer.
        *
-       * @param[in]   buf, buffer.
-       * @param[in]   len, buffer length.
+       * @param[in]   dest_addr, destination address (2 bytes).
+       * @param[in]   data_payload, data payload buffer.
+       * @param[in]   payload_len, data payload buffer length.
        * @param[out]  obuf, output buffer.
        * @param[in]   olen, output buffer length.
        */
       void
-      generate_mac (const uint8_t *buf, int len, uint8_t *obuf, int &olen);
+      generate_data_frame (const uint8_t *dest_addr,
+                           const uint8_t *data_payload, int payload_len,
+                           uint8_t *obuf, int &olen);
+
+      /**
+       * @brief   Generate ACK frame to a buffer.
+       *
+       * @param[in]   dest_addr, destination address (2 bytes).
+       * @param[in]   seqno, sequence number to ack.
+       * @param[out]  obuf, output buffer.
+       * @param[in]   olen, output buffer length.
+       */
+      void
+      generate_ack_frame (const uint8_t *dest_addr, int seqno, uint8_t *obuf,
+                          int &olen);
 
       /**
        * @brief   Calculate CRC16 checksum for a buffer.
@@ -355,7 +372,7 @@ namespace gr
       cca (void);
 
       /**
-       * @brief   PHY transmit. Send data in d_msg, d_msg_len to physical layer.
+       * @brief   PHY transmit. Send data in buffer to physical layer.
        *
        */
       void

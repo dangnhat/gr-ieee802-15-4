@@ -141,9 +141,9 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   }
 
   /* Create transmission thread */
-  transmit_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+  transmit_thread_ptr[TX_THREAD_LOCAL] = boost::shared_ptr<gr::thread::thread> (
       new gr::thread::thread (
-          boost::bind (&shcs_mac_impl::transmit_thread, this)));
+          boost::bind (&shcs_mac_impl::transmit_thread_local, this)));
 
   /* Create control threads */
   d_control_thread_state = NULL_STATE;
@@ -161,9 +161,10 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
             boost::bind (&shcs_mac_impl::sur_control_thread, this)));
 
     /* Create additional transmit thread for Router */
-    transmit_thread_local_ptr = boost::shared_ptr<gr::thread::thread> (
-        new gr::thread::thread (
-            boost::bind (&shcs_mac_impl::transmit_thread_local, this)));
+    transmit_thread_ptr[TX_THREAD_PARENT] =
+        boost::shared_ptr<gr::thread::thread> (
+            new gr::thread::thread (
+                boost::bind (&shcs_mac_impl::transmit_thread_parent, this)));
   }
   else {
     /* Create control thread for SU */
@@ -353,9 +354,9 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
 
   while (1) {
     /* Wait until transmit state */
-    gr::thread::scoped_lock lock (d_tx_m);
+    gr::thread::scoped_lock lock (d_tx_mutex);
     while (d_control_thread_state != transmit_state) {
-      d_tx_cv.wait (lock);
+      d_tx_condvar.wait (lock);
     }
     lock.unlock ();
 
@@ -426,7 +427,7 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     if (d_is_ack_received[transmit_thread_id]) {
       /* ACK received */
-      dout << "ACKed " << seqno << endl;
+      dout << "Received ack for #" << int(seqno) << endl;
       return true;
     }
   }
@@ -560,18 +561,18 @@ shcs_mac_impl::data_duration (void)
   if ((is_channel_available) && (!is_busy_signal_received)) {
 
     /* Wake transmit_thread up */
-    gr::thread::scoped_lock lock (d_tx_m);
-    if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK)) {
+    gr::thread::scoped_lock lock (d_tx_mutex);
+    if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_PARENT_NWK)) {
+      d_control_thread_state = DATA_TRANSMISSION_PARENT;
+      dout << "Channel is available: DATA_TRANSMISSION_PARENT state, " << endl;
+    }
+    else {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
       dout << "Channel is available: DATA_TRANSMISSION_LOCAL state, " << endl;
     }
-    else {
-      d_control_thread_state = DATA_TRANSMISSION;
-      dout << "Channel is available: DATA_TRANSMISSION state, " << endl;
-    }
 
     lock.unlock ();
-    d_tx_cv.notify_all ();
+    d_tx_condvar.notify_all ();
   }
   else {
     d_control_thread_state = NULL_STATE;
@@ -651,79 +652,6 @@ shcs_mac_impl::suc_control_thread (void)
   boost::this_thread::sleep_for (boost::chrono::seconds { 3 });
 
   time_slot_start = boost::posix_time::microsec_clock::universal_time ();
-
-  /* TEST */
-  /* Broadcast beacon */
-  uint8_t d_msg[256];
-  int d_msg_len;
-
-  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
-  uint8_t flags = IEEE802154_FCF_TYPE_BEACON | IEEE802154_FCF_SRC_ADDR_SHORT
-      | IEEE802154_FCF_SRC_ADDR_VOID;
-  d_msg_len = 0;
-  le_uint16_t pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
-
-  if ((d_msg_len = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2,
-                                             d_broadcast_addr, 2, pan_id_le,
-                                             pan_id_le, flags, d_seq_nr++))
-      == 0) {
-    dout << "Beacon header error." << endl;
-  }
-  else {
-    /* Copy header to MAC frame */
-    memcpy (d_msg, mhr, d_msg_len);
-
-    /* Superframe Specification field */
-    d_msg[d_msg_len++] = 0x00;
-    d_msg[d_msg_len++] = 0xc0;
-
-    /* GTS Specification field */
-    d_msg[d_msg_len++] = 0;
-
-    /* Pending Address Specification field */
-    d_msg[d_msg_len++] = 0;
-
-    /* Prepare the beacon payload */
-    /* Control byte */
-    uint8_t control_byte = 0;
-    control_byte |= d_assoc_current_sur_state << ASSOC_CURRENT_SUR_STATE_POS;
-    d_msg[d_msg_len] = control_byte;
-    d_msg_len++;
-
-    /* SUC ID */
-    uint16_to_buffer (d_suc_id, &d_msg[d_msg_len]);
-    d_msg_len += 2;
-
-    /* Sensing time */
-    uint16_to_buffer (Tss, &d_msg[d_msg_len]);
-    d_msg_len += 2;
-
-    /* Current rand seed */
-    if (d_nwk_dev_type == SUC) {
-      uint32_to_buffer (current_rand_seed, &d_msg[d_msg_len]);
-    }
-    else {
-      /* SUR */
-      uint32_to_buffer (current_rand_seed_local, &d_msg[d_msg_len]);
-    }
-    d_msg_len += 4;
-
-    /* Calculate FCS */
-    uint16_t fcs = crc16 (d_msg, d_msg_len);
-
-    /* Add FCS to frame */
-    d_msg[d_msg_len++] = (uint8_t) fcs;
-    d_msg[d_msg_len++] = (uint8_t) (fcs >> 8);
-  }
-
-  d_control_thread_state = DATA_TRANSMISSION;
-  while (1) {
-    boost::this_thread::sleep_for (boost::chrono::seconds { 1 });
-
-    if (!csma_ca_send (DATA_TRANSMISSION, d_msg, d_msg_len)) {
-      dout << "Send failed" << endl;
-    }
-  }
 
   /* Reload tasks */
   reload_tasks ();
@@ -849,7 +777,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   /* Beacon packet */
   frame_p = (uint8_t*) pmt::blob_data (blob);
 
-  if ((frame_p[0] & 0x03) == 0) {
+  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_BEACON) {
     /* Beacon found */
     dout << "MAC: Found a beacon." << endl;
 
@@ -899,7 +827,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
         d_su_connected = true;
 
-        dout << "Control byte: 0x" << hex << control_byte_tmp << dec << endl;
+        dout << "Control byte: 0x" << hex << int(control_byte_tmp) << dec << endl;
         dout << "Received SUC ID: 0x" << hex << d_assoc_suc_id << dec << endl;
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
@@ -941,7 +869,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     return;
   }
 
-  /* Other packet types */
+  /* DATA/ACK */
   /* Check destination address */
   uint8_t dest[8];
   le_uint16_t dest_pan;
@@ -960,13 +888,13 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     return;
   }
 
-  if ((frame_p[0] & 0x03) == 2) {
+  /* ACK */
+  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_ACK) {
     /* ACK, check seqno */
-    d_last_recv_seqno = ieee802154_get_seq (frame_p);
-    dout << "MAC: recv ACK for " << int (d_last_recv_seqno) << endl;
+    uint8_t recv_seqno = ieee802154_get_seq (frame_p);
 
     for (int count = 0; count < max_transmit_threads; count++) {
-      if (d_ack_recv_seq_nr[count] == d_last_recv_seqno) {
+      if (d_ack_recv_seq_nr[count] == recv_seqno) {
         {
           gr::thread::scoped_lock lock (d_ack_m[count]);
           d_is_ack_received[count] = true;
@@ -979,19 +907,63 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     return;
   }
 
-  if ((frame_p[0] & 0x03) == 1) {
-    cout << ""
+  /* DATA */
+  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_DATA) {
+    uint8_t recv_src_addr[8], recv_seqno;
+    le_uint16_t recv_src_pan;
+    uint8_t ack_frame_buf[IEEE802154_MAX_HDR_LEN];
+    int ack_frame_len;
+
+    recv_seqno = ieee802154_get_seq (frame_p);
+
+    /* DATA */
+    /* Check duplicate frame */
+    if (!d_is_first_recv_data_frame) {
+      if (recv_seqno == d_last_recv_seqno) {
+        /* Duplicated, drop frame */
+        dout << "MAC: duplicated frame #" << int (d_last_recv_seqno)
+            << ", dropping." << endl;
+
+        /* Send ACK back to sender */
+        ieee802154_get_src (frame_p, recv_src_addr, &recv_src_pan);
+
+        generate_ack_frame (recv_src_addr, recv_seqno, ack_frame_buf,
+                            ack_frame_len);
+        phy_transmit (ack_frame_buf, ack_frame_len);
+        dout << "MAC: Sent ack #" << int (recv_seqno) << endl;
+        return;
+      }
+    }
+    else {
+      /* first received data frame */
+      d_is_first_recv_data_frame = false;
+    }
+
+    /* Handle new data frame */
+    dout << "MAC: new DATA frame #" << int (recv_seqno) << endl;
+
+    /* Send ACK back to sender */
+    ieee802154_get_src (frame_p, recv_src_addr, &recv_src_pan);
+
+    generate_ack_frame (recv_src_addr, recv_seqno, ack_frame_buf,
+                        ack_frame_len);
+    phy_transmit (ack_frame_buf, ack_frame_len);
+    dout << "MAC: Sent ack #" << int (recv_seqno) << endl;
+    d_last_recv_seqno = recv_seqno;
+
+    /* Forward to RIME layer */
+    dout << "MAC: forward packet to RIME layer." << endl;
+    print_message (frame_p, frame_len);
+
+    size_t fcs_len = ieee802154_get_frame_hdr_len (frame_p);
+    pmt::pmt_t mac_payload = pmt::make_blob ((char*) frame_p + fcs_len,
+                                             frame_len - fcs_len - 2);
+
+    message_port_pub (pmt::mp ("app out"),
+                      pmt::cons (pmt::PMT_NIL, mac_payload));
+
+    return;
   }
-
-  /* Forward to RIME layer */
-  dout << "MAC: forward packet to RIME layer." << endl;
-  print_message (frame_p, frame_len);
-
-  size_t fcs_len = ieee802154_get_frame_hdr_len (frame_p);
-  pmt::pmt_t mac_payload = pmt::make_blob ((char*) frame_p + fcs_len,
-                                           frame_len - fcs_len - 2);
-
-  message_port_pub (pmt::mp ("app out"), pmt::cons (pmt::PMT_NIL, mac_payload));
 }
 
 /*------------------------------------------------------------------------*/
@@ -1026,111 +998,103 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
   /* Push to transmit queue */
 //      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
   uint8_t dest_suc_id = ((uint8_t*) pmt::blob_data (blob))[0];
-  if (d_nwk_dev_type == SUR && dest_suc_id != d_assoc_suc_id) {
-    dout << "SUR: push to transmit queue local, dest: " << int (dest_suc_id)
+  if (d_nwk_dev_type == SUR && dest_suc_id == d_assoc_suc_id) {
+    dout << "SUR: push to transmit queue parent, dest: " << int (dest_suc_id)
         << endl;
 
-    if (!transmit_queue_local.push (blob)) {
+    if (!transmit_queue[TX_THREAD_PARENT].push (blob)) {
       dout << "MAC: push packet to transmit_queue failed." << endl;
     }
     else {
       /* Wake transmit_thread up */
-      transmit_thread_local_ptr->interrupt ();
     }
   }
   else {
-    if (!transmit_queue.push (blob)) {
+    if (!transmit_queue[TX_THREAD_LOCAL].push (blob)) {
       dout << "MAC: push packet to transmit_queue failed." << endl;
     }
     else {
       /* Wake transmit_thread up */
-      transmit_thread_ptr->interrupt ();
     }
   }
-}
-
-/*------------------------------------------------------------------------*/
-void
-shcs_mac_impl::transmit_thread (void)
-{
-  pmt::pmt_t blob;
-
-  dout << "Transmit thread created." << endl;
-//
-//  while (1) {
-//    if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
-//      continue;
-//    }
-//
-//    if (transmit_queue.read_available () > 0) {
-//
-//    }
-//  }
-
-//  while (1) {
-//    try {
-//      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
-//    }
-//    catch (boost::thread_interrupted&) {
-//      dout << "Transmit_t: Interrupted, woke up." << endl;
-//
-//      /* Check current control state */
-//      if (d_control_thread_state == DATA_TRANSMISSION) {
-//        if (d_nwk_dev_type == SUR && d_sur_state != IN_PARENT_NWK) {
-//          dout << "SUR: not in parent nwk -> sleep" << endl;
-//          continue;
-//        }
-//
-//        /* Transmit data in transmit_queue */
-//        while (transmit_queue.pop (blob)) {
-//          print_message ((uint8_t*) pmt::blob_data (blob),
-//                         pmt::blob_length (blob));
-//          generate_mac ((const uint8_t*) pmt::blob_data (blob),
-//                        pmt::blob_length (blob));
-//          message_port_pub (
-//              pmt::mp ("pdu out"),
-//              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
-//        }
-//      }
-//    }
-//  }/* end while */
 }
 
 /*------------------------------------------------------------------------*/
 void
 shcs_mac_impl::transmit_thread_local (void)
 {
-//  pmt::pmt_t blob;
-//
-//  dout << "Transmit thread local (SUR) created." << endl;
-//
-//  while (1) {
-//    try {
-//      boost::this_thread::sleep_for (boost::chrono::milliseconds { Tf });
-//    }
-//    catch (boost::thread_interrupted&) {
-//      dout << "Transmit_local_t: Interrupted, woke up." << endl;
-//
-//      /* Check current control state */
-//      if (d_control_thread_state == DATA_TRANSMISSION) {
-//        if (d_sur_state != IN_LOCAL_NWK) {
-//          dout << "SUR: not in local nwk -> sleep" << endl;
-//          return;
-//        }
-//
-//        /* Transmit data in transmit_queue */
-//        while (transmit_queue_local.pop (blob)) {
-//          print_message ((uint8_t*) pmt::blob_data (blob),
-//                         pmt::blob_length (blob));
-//          generate_mac ((const uint8_t*) pmt::blob_data (blob),
-//                        pmt::blob_length (blob));
-//          message_port_pub (
-//              pmt::mp ("pdu out"),
-//              pmt::cons (pmt::PMT_NIL, pmt::make_blob (d_msg, d_msg_len)));
-//        }
-//      }
-//    }
-//  }/* end while */
+  pmt::pmt_t blob;
+  uint8_t *mac_payload_p, *dest_addr_p;
+  int mac_payload_len, frame_len;
+  uint8_t frame_buf[256];
+
+  dout << "Transmit thread local created." << endl;
+
+  while (1) {
+    /* Waiting for the right state */
+    gr::thread::scoped_lock lock (d_tx_mutex);
+    while (d_control_thread_state != DATA_TRANSMISSION_LOCAL) {
+      //dout << "thread local: waiting." << endl;
+      d_tx_condvar.wait (lock);
+      //dout << "thread local: woke up." << endl;
+    }
+    lock.unlock ();
+
+    if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
+      /* There is data in transmit queue, pop it out and transmit */
+      blob = transmit_queue[TX_THREAD_LOCAL].front ();
+      dest_addr_p = (uint8_t*) pmt::blob_data (blob);
+      mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
+      mac_payload_len = pmt::blob_length (blob) - 2;
+      print_message (mac_payload_p, mac_payload_len);
+
+      generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
+                           frame_buf, frame_len);
+      csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL, frame_buf,
+                     frame_len);
+
+      transmit_queue[TX_THREAD_LOCAL].pop ();
+    }
+  }
+}
+
+/*------------------------------------------------------------------------*/
+void
+shcs_mac_impl::transmit_thread_parent (void)
+{
+  pmt::pmt_t blob;
+  uint8_t *mac_payload_p, *dest_addr_p;
+  int mac_payload_len, frame_len;
+  uint8_t frame_buf[256];
+
+  dout << "Transmit thread parent created." << endl;
+
+  while (1) {
+    /* Waiting for the right state */
+    gr::thread::scoped_lock lock (d_tx_mutex);
+    while (d_control_thread_state != DATA_TRANSMISSION_PARENT) {
+      //dout << "tx thread parent waiting." << endl;
+      d_tx_condvar.wait (lock);
+      //dout << "tx thread parent wokeup." << endl;
+    }
+    lock.unlock ();
+
+    if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
+      /* There is data in transmit queue, pop it out and transmit */
+      blob = transmit_queue[TX_THREAD_PARENT].front ();
+      dest_addr_p = (uint8_t*) pmt::blob_data (blob);
+      mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
+      mac_payload_len = pmt::blob_length (blob) - 2;
+      print_message (mac_payload_p, mac_payload_len);
+
+      generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
+                           frame_buf, frame_len);
+      csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT, frame_buf,
+                     frame_len);
+
+      transmit_queue[TX_THREAD_PARENT].pop ();
+    }
+  }
 }
 
 /*------------------------------------------------------------------------*/
@@ -1156,12 +1120,12 @@ shcs_mac_impl::crc16 (uint8_t *buf, int len)
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf,
-                             int &olen)
+shcs_mac_impl::generate_data_frame (const uint8_t *dest_addr,
+                                    const uint8_t *data_payload,
+                                    int payload_len, uint8_t *obuf, int &olen)
 {
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
   uint8_t flags = IEEE802154_FCF_TYPE_DATA;
-  obuf = 0;
   le_uint16_t pan_id_le;
   if (d_nwk_dev_type == SUC) {
     pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
@@ -1171,7 +1135,6 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf,
   }
 
   /* Peak to get src addr and dest addr */
-  const uint8_t* dest_addr = &buf[0];
   if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
                                         pan_id_le, pan_id_le, flags, d_seq_nr++))
       == 0) {
@@ -1182,8 +1145,8 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf,
     memcpy (obuf, mhr, olen);
 
     /* Prepare the data payload */
-    memcpy (&obuf[olen], buf + 2, len - 2);
-    olen += len - 2;
+    memcpy (&obuf[olen], data_payload, payload_len);
+    olen += payload_len;
 
     /* Calculate FCS */
     uint16_t fcs = crc16 (obuf, olen);
@@ -1191,6 +1154,41 @@ shcs_mac_impl::generate_mac (const uint8_t *buf, int len, uint8_t *obuf,
     /* Add FCS to frame */
     obuf[olen++] = (uint8_t) fcs;
     obuf[olen++] = (uint8_t) (fcs >> 8);
+  }
+}
+
+/*------------------------------------------------------------------------*/
+void
+shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
+                                   uint8_t *obuf, int &olen)
+{
+  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+  uint8_t flags = IEEE802154_FCF_TYPE_ACK;
+  le_uint16_t pan_id_le;
+  if (d_nwk_dev_type == SUC) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
+  }
+  else if (d_nwk_dev_type == SU) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_assoc_suc_id));
+  }
+
+  /* Peak to get src addr and dest addr */
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
+                                        pan_id_le, pan_id_le, flags, seqno))
+      == 0) {
+    dout << "MAC: header error." << endl;
+  }
+  else {
+    /* Copy header to MAC frame */
+    memcpy (obuf, mhr, olen);
+
+    /* Calculate FCS */
+    uint16_t fcs = crc16 (obuf, olen);
+
+    /* Add FCS to frame */
+    obuf[olen++] = (uint8_t) fcs;
+    obuf[olen++] = (uint8_t) (fcs >> 8);
+
   }
 }
 
@@ -1240,19 +1238,6 @@ shcs_mac_impl::reporting_thread_func (void)
 
     /* Sleep for 5s  */
     boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
-
-    /* TEST */
-    gr::thread::scoped_lock lock (d_tx_m);
-    if (d_control_thread_state == DATA_TRANSMISSION) {
-      d_control_thread_state = DATA_TRANSMISSION_LOCAL;
-      dout << d_control_thread_state << endl;
-    }
-    else {
-      d_control_thread_state = DATA_TRANSMISSION;
-      dout << d_control_thread_state << endl;
-    }
-    lock.unlock ();
-    d_tx_cv.notify_all ();
 
     /* Reporting */
     std::cout << "MAC: Reports #" << count << ", avg data rate: "
