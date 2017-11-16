@@ -383,6 +383,8 @@ namespace gr
        * when it's waiting. It will only transmit when control_thread_state is
        * at a specified state.
        *
+       * @param[in] wait_for_beacon. true if it needs to wait for beacon
+       *            before transmitting.
        * @param[in] transmit_state. It will wait until control thread is in
        *            this state before sending.
        *
@@ -394,13 +396,17 @@ namespace gr
        * - csma_ca_backoff_unit
        * - d_msg, d_msg_len: packet we need to send.
        * - d_control_thread_state
+       * - is_beacon_received when wait_for_beacon = true.
        */
       bool
-      csma_ca_send (uint16_t transmit_state, const uint8_t *buf, int len);
+      csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
+                    const uint8_t *buf, int len);
 
       /**
        * @brief   Perform reliable CSMA CA unicast with Idle RQ.
        *
+       * @param[in] wait_for_beacon. true if it needs to wait for beacon
+       *            before transmitting.
        * @param[in] transmit_thread_id. It's used in mac_in function to wake up
        *            correct waiting thread.
        * @param[in] transmit_state. It will wait until control thread is in
@@ -415,10 +421,11 @@ namespace gr
        * - max_retries, max_retry_timeout
        * - d_ack_received_cv, d_ack_m
        * - d_ack_src_addr[2], d_ack_recv_seq_nr
+       * - is_beacon_received when wait_for_beacon = true.
        */
       bool
       csma_ca_rsend (uint8_t transmit_thread_id, uint16_t transmit_state,
-                     const uint8_t *buf, int len);
+                     bool wait_for_beacon, const uint8_t *buf, int len);
 
       /**
        * @brief   Safely increase seqno with mutex.

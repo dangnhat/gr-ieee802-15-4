@@ -346,8 +346,8 @@ shcs_mac_impl::phy_transmit (const uint8_t *buf, int len)
 
 /*------------------------------------------------------------------------*/
 bool
-shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
-                             int len)
+shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
+                             const uint8_t *buf, int len)
 {
   int num_of_backoffs = 0, backoff_exp = 0;
   int backoff_time, backoff_time_max;
@@ -355,7 +355,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
   while (1) {
     /* Wait until transmit state */
     gr::thread::scoped_lock lock (d_tx_mutex);
-    while (d_control_thread_state != transmit_state) {
+    while (d_control_thread_state != transmit_state
+        || (wait_for_beacon && !is_beacon_received)) {
       d_tx_condvar.wait (lock);
     }
     lock.unlock ();
@@ -397,8 +398,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
 /*------------------------------------------------------------------------*/
 bool
 shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
-                              uint16_t transmit_state, const uint8_t *buf,
-                              int len)
+                              uint16_t transmit_state, bool wait_for_beacon,
+                              const uint8_t *buf, int len)
 {
   uint8_t seqno, backup_buf[256];
 //  uint8_t dest_addr[8];
@@ -416,7 +417,7 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     /* Send data */
     dout << "RSend: Send try " << count << endl;
-    csma_ca_send (transmit_state, buf, len);
+    csma_ca_send (transmit_state, wait_for_beacon, buf, len);
 
     /* Wait for ACK */
     gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
@@ -427,7 +428,7 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     if (d_is_ack_received[transmit_thread_id]) {
       /* ACK received */
-      dout << "RSend: Received ack for #" << int(seqno) << endl;
+      dout << "RSend: Received ack for #" << int (seqno) << endl;
       return true;
     }
   }
@@ -824,7 +825,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
         d_su_connected = true;
 
-        dout << "Control byte: 0x" << hex << int(control_byte_tmp) << dec << endl;
+        dout << "Control byte: 0x" << hex << int (control_byte_tmp) << dec
+            << endl;
         dout << "Received SUC ID: 0x" << hex << d_assoc_suc_id << dec << endl;
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
@@ -841,8 +843,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
           /* Check SUC ID */
           data_index = ieee802154_get_frame_hdr_len (frame_p);
 
-          /* Skip superframe, GTS and pending address fields */
-          data_index += 4;
+          /* Skip superframe, GTS, pending address and control_byte fields */
+          data_index += 5;
 
           uint16_t recv_suc_id = buffer_to_uint16 (&frame_p[data_index]);
 
@@ -1024,6 +1026,7 @@ shcs_mac_impl::transmit_thread_local (void)
   uint8_t *mac_payload_p, *dest_addr_p;
   int mac_payload_len, frame_len;
   uint8_t frame_buf[256];
+  bool wait_for_beacon = false;
 
   dout << "Transmit thread local created." << endl;
 
@@ -1047,8 +1050,18 @@ shcs_mac_impl::transmit_thread_local (void)
 
       generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
                            frame_buf, frame_len);
-      csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL, frame_buf,
-                     frame_len);
+
+      /* Check dest_address to decide whether we need to wait for beacon or not*/
+      wait_for_beacon = false;
+      if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
+          && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
+          && (dest_addr_p[1] == 0)) {
+        wait_for_beacon = true;
+        dout << "MAC: need to wait for beacon." << endl;
+      }
+
+      csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL, wait_for_beacon,
+                     frame_buf, frame_len);
 
       transmit_queue[TX_THREAD_LOCAL].pop ();
     }
@@ -1063,6 +1076,7 @@ shcs_mac_impl::transmit_thread_parent (void)
   uint8_t *mac_payload_p, *dest_addr_p;
   int mac_payload_len, frame_len;
   uint8_t frame_buf[256];
+  bool wait_for_beacon;
 
   dout << "Transmit thread parent created." << endl;
 
@@ -1086,8 +1100,17 @@ shcs_mac_impl::transmit_thread_parent (void)
 
       generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
                            frame_buf, frame_len);
-      csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT, frame_buf,
-                     frame_len);
+      /* Check dest_address to decide whether we need to wait for beacon or not*/
+      wait_for_beacon = false;
+      if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
+          && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
+          && (dest_addr_p[1] == 0)) {
+        wait_for_beacon = true;
+        dout << "MAC: need to wait for beacon." << endl;
+      }
+
+      csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT,
+                     wait_for_beacon, frame_buf, frame_len);
 
       transmit_queue[TX_THREAD_PARENT].pop ();
     }
