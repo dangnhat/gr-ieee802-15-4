@@ -210,7 +210,7 @@ namespace gr
 
       /* CSMA-CA rsend */
       const int max_retries = 3;
-      const int max_retry_timeout = 100; /* ms */
+      const int max_retry_timeout = 500; /* ms */
       gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
       gr::thread::mutex d_ack_m[max_transmit_threads];
       bool d_is_ack_received[max_transmit_threads] = { false, false };

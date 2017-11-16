@@ -364,7 +364,7 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, const uint8_t *buf,
     backoff_time_max = (int) (pow (2, backoff_exp) - 1);
 
     if (backoff_time_max != 0) {
-      backoff_time = (rand () % backoff_time_max) * csma_ca_backoff_unit;
+      backoff_time = ((rand () % backoff_time_max) + 1) * csma_ca_backoff_unit;
 
       dout << "backoff time max " << backoff_time_max << endl;
       dout << "backoff " << backoff_time << "ms" << endl;
@@ -415,8 +415,8 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
     d_ack_recv_seq_nr[transmit_thread_id] = seqno; /* Expecting seqno */
 
     /* Send data */
-    dout << "Send try " << count << endl;
     csma_ca_send (transmit_state, buf, len);
+    dout << "Sent try " << count << endl;
 
     /* Wait for ACK */
     gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
