@@ -76,9 +76,9 @@ main ()
     return 0;
   }
 
-  /* Set timeout for socket 10s */
+  /* Set timeout for socket 20s */
   struct timeval tv;
-  tv.tv_sec = 10;
+  tv.tv_sec = 20;
   tv.tv_usec = 0;
   if (setsockopt (recv_socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))
       < 0) {
@@ -117,31 +117,39 @@ main ()
     send_time = system_clock::now ();
 
     /* Wait for ack */
-    ack_recv_buffer_len = recvfrom (recv_socket_fd, ack_buffer, ack_buffer_len,
-                                    0, (struct sockaddr *) &recv_addr,
-                                    &recv_addr_len);
-    if (ack_recv_buffer_len < 0) {
-      cout << "Recvfrom error or timeout" << endl;
-    }
-    else {
-      /* Get current time */
-      ack_time = system_clock::now ();
+    while (1) {
+      ack_recv_buffer_len = recvfrom (recv_socket_fd, ack_buffer,
+                                      ack_buffer_len, 0,
+                                      (struct sockaddr *) &recv_addr,
+                                      &recv_addr_len);
+      if (ack_recv_buffer_len < 0) {
+        cout << "Recvfrom error or timeout" << endl;
 
-      ack_buffer[ack_recv_buffer_len] = '\0';
-      cout << "Received: " << ack_buffer << endl;
+        seqno++;
+        break;
+      }
+      else {
+        /* Get current time */
+        ack_time = system_clock::now ();
 
-      string s (ack_buffer);
-      stringstream ack_string (s);
-      ack_string >> recv_seqno;
-      if (recv_seqno == seqno) {
-        numAckedPackets++;
-        cout << "ACKed for #" << seqno << ", acked: " << numAckedPackets
-            << ", RTT: " << duration_cast<milliseconds> (ack_time - send_time)
-            << endl;
+        ack_buffer[ack_recv_buffer_len] = '\0';
+        cout << "Received: " << ack_buffer << endl;
+
+        string s (ack_buffer);
+        stringstream ack_string (s);
+        ack_string >> recv_seqno;
+        if (recv_seqno == seqno) {
+          numAckedPackets++;
+          cout << "ACKed for #" << seqno << ", acked: " << numAckedPackets
+              << ", RTT: " << duration_cast<milliseconds> (ack_time - send_time)
+              << endl;
+
+          seqno++;
+          break;
+        }
       }
     }
 
-    seqno++;
   }
 
   return 0;
