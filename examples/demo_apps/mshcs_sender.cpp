@@ -76,9 +76,9 @@ main ()
     return 0;
   }
 
-  /* Set timeout for socket 5s */
+  /* Set timeout for socket 10s */
   struct timeval tv;
-  tv.tv_sec = 5;
+  tv.tv_sec = 10;
   tv.tv_usec = 0;
   if (setsockopt (recv_socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))
       < 0) {
