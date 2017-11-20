@@ -1085,6 +1085,10 @@ shcs_mac_impl::transmit_thread_local (void)
         continue;
       }
     }
+    else {
+      dout << "TX_THREAD_LOCAL: Retransmit last frame." << endl;
+      retransmit_last_frame = false;
+    }
 
     /* Check dest_address to decide whether we need to wait for beacon or not*/
     wait_for_beacon = false;
@@ -1092,7 +1096,7 @@ shcs_mac_impl::transmit_thread_local (void)
         && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
         && (dest_addr_p[1] == 0)) {
       wait_for_beacon = true;
-      dout << "MAC: need to wait for beacon." << endl;
+      dout << "TX_THREAD_LOCAL: need to wait for beacon." << endl;
     }
 
     rsend_result = csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL,
@@ -1170,6 +1174,10 @@ shcs_mac_impl::transmit_thread_parent (void)
         continue;
       }
     }
+    else {
+      dout << "TX_THREAD_PARENT: Retransmit last frame." << endl;
+      retransmit_last_frame = false;
+    }
 
     /* Check dest_address to decide whether we need to wait for beacon or not*/
     wait_for_beacon = false;
@@ -1177,7 +1185,7 @@ shcs_mac_impl::transmit_thread_parent (void)
         && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
         && (dest_addr_p[1] == 0)) {
       wait_for_beacon = true;
-      dout << "MAC: need to wait for beacon." << endl;
+      dout << "TX_THREAD_PARENT: need to wait for beacon." << endl;
     }
 
     rsend_result = csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT,
