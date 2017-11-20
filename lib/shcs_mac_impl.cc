@@ -416,7 +416,7 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
     d_ack_recv_seq_nr[transmit_thread_id] = seqno; /* Expecting seqno */
 
     /* Send data */
-    dout << "RSend: Send try " << count << endl;
+    dout << "RSend: Send #" << int (seqno) << " try " << count << endl;
     csma_ca_send (transmit_state, wait_for_beacon, buf, len);
 
     /* Wait for ACK */
@@ -582,49 +582,74 @@ shcs_mac_impl::data_duration (void)
 void
 shcs_mac_impl::reload_tasks (void)
 {
-  d_control_thread_state = RELOADING;
+  /* Check d_ex_op_wait_time_left */
+  if ((!d_ext_op_sender) && (d_ext_op_recv_wait_time_left <= 0)) {
+    d_control_thread_state = RELOADING;
 
-  /* SUR: switch network */
-  if (d_nwk_dev_type == SUR) {
-    d_sur_state = !d_sur_state;
-  }
+    /* SUR: switch network */
+    if (d_nwk_dev_type == SUR) {
+      d_sur_state = !d_sur_state;
+    }
 
-  /* SUC: switch current SUR should-be state */
-  if (d_nwk_dev_type == SUC) {
-    d_assoc_current_sur_state = !d_assoc_current_sur_state;
-  }
+    /* SUC: switch current SUR should-be state */
+    if (d_nwk_dev_type == SUC) {
+      d_assoc_current_sur_state = !d_assoc_current_sur_state;
+    }
 
-  /* Perform channel hopping */
-  tasks_processor::get ().run_at (
-      time_slot_start, boost::bind (&shcs_mac_impl::channel_hopping, this));
-
-  /* Spectrum sensing */
-  tasks_processor::get ().run_at (
-      time_slot_start + boost::posix_time::milliseconds (Th),
-      boost::bind (&shcs_mac_impl::spectrum_sensing, this));
-
-  /* Beacon duration */
-  if ((d_nwk_dev_type == SUC)
-      || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
+    /* Perform channel hopping */
     tasks_processor::get ().run_at (
-        time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb / 2),
-        boost::bind (&shcs_mac_impl::beacon_duration, this));
+        time_slot_start, boost::bind (&shcs_mac_impl::channel_hopping, this));
+
+    /* Spectrum sensing */
+    tasks_processor::get ().run_at (
+        time_slot_start + boost::posix_time::milliseconds (Th),
+        boost::bind (&shcs_mac_impl::spectrum_sensing, this));
+
+    /* Beacon duration */
+    if ((d_nwk_dev_type == SUC)
+        || ((d_nwk_dev_type == SUR) && (d_sur_state == IN_LOCAL_NWK))) {
+      tasks_processor::get ().run_at (
+          time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb / 2),
+          boost::bind (&shcs_mac_impl::beacon_duration, this));
+    }
+    else {
+      tasks_processor::get ().run_at (
+          time_slot_start + boost::posix_time::milliseconds (Th + Tss),
+          boost::bind (&shcs_mac_impl::beacon_duration, this));
+    }
+
+    /* Reporting duration */
+    tasks_processor::get ().run_at (
+        time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb),
+        boost::bind (&shcs_mac_impl::reporting_duration, this));
+
+    /* Data duration */
+    tasks_processor::get ().run_at (
+        time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb + Tr),
+        boost::bind (&shcs_mac_impl::data_duration, this));
   }
   else {
-    tasks_processor::get ().run_at (
-        time_slot_start + boost::posix_time::milliseconds (Th + Tss),
-        boost::bind (&shcs_mac_impl::beacon_duration, this));
+    /* Extended operation */
+    dout << "MAC: Reload task: in EXT_OP" << endl;
+
+    /* SUC: switch current SUR should-be state */
+    if (d_nwk_dev_type == SUC) {
+      d_assoc_current_sur_state = !d_assoc_current_sur_state;
+    }
+
+    current_rand_seed = rng ();
+
+    if (d_nwk_dev_type == SUR) {
+      current_rand_seed_local = rng_local ();
+    }
+
+    gr::thread::scoped_lock lock (d_ext_op_recv_wait_time_mutex);
+    if (d_ext_op_recv_wait_time_left > 0) {
+      d_ext_op_recv_wait_time_left--;
+      dout << "MAC: EXT_OP wait time " << d_ext_op_recv_wait_time_left << endl;
+    }
+    lock.unlock ();
   }
-
-  /* Reporting duration */
-  tasks_processor::get ().run_at (
-      time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb),
-      boost::bind (&shcs_mac_impl::reporting_duration, this));
-
-  /* Data duration */
-  tasks_processor::get ().run_at (
-      time_slot_start + boost::posix_time::milliseconds (Th + Tss + Tb + Tr),
-      boost::bind (&shcs_mac_impl::data_duration, this));
 
   /* Reload tasks at the end of a time slot */
   tasks_processor::get ().run_at (
@@ -941,6 +966,16 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     /* Handle new data frame */
     dout << "MAC: new DATA frame #" << int (recv_seqno) << endl;
 
+    /* Check extended operation request */
+    if ((frame_p[0] & IEEE802154_SHCS_EXT_OPERATION)
+        == IEEE802154_SHCS_EXT_OPERATION) {
+      /* turn on extended operation */
+      dout << "MAC: EXT_OP is on." << endl;
+      gr::thread::scoped_lock lock (d_ext_op_recv_wait_time_mutex);
+      d_ext_op_recv_wait_time_left = max_ext_op_recv_wait_time;
+      lock.unlock ();
+    }
+
     /* Send ACK back to sender */
     ieee802154_get_src (frame_p, recv_src_addr, &recv_src_pan);
 
@@ -986,11 +1021,11 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
     return;
   }
 
-  dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
+  //dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
   if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR) && !d_su_connected) {
-    dout << "MAC: SU/SUR is not connected, drop packet!" << endl;
+    //dout << "MAC: SU/SUR is not connected, drop packet!" << endl;
     return;
   }
 
@@ -998,22 +1033,16 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
 //      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
   uint8_t dest_suc_id = ((uint8_t*) pmt::blob_data (blob))[0];
   if (d_nwk_dev_type == SUR && dest_suc_id == d_assoc_suc_id) {
-    dout << "SUR: push to transmit queue parent, dest: " << int (dest_suc_id)
-        << endl;
+//    dout << "SUR: push to transmit queue parent, dest: " << int (dest_suc_id)
+//        << endl;
 
     if (!transmit_queue[TX_THREAD_PARENT].push (blob)) {
-      dout << "MAC: push packet to transmit_queue failed." << endl;
-    }
-    else {
-      /* Wake transmit_thread up */
+//      dout << "MAC: push packet to transmit_queue failed." << endl;
     }
   }
   else {
     if (!transmit_queue[TX_THREAD_LOCAL].push (blob)) {
-      dout << "MAC: push packet to transmit_queue failed." << endl;
-    }
-    else {
-      /* Wake transmit_thread up */
+//      dout << "MAC: push packet to transmit_queue failed." << endl;
     }
   }
 }
@@ -1022,11 +1051,11 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
 void
 shcs_mac_impl::transmit_thread_local (void)
 {
-  pmt::pmt_t blob;
-  uint8_t *mac_payload_p, *dest_addr_p;
+  pmt::pmt_t blob, next_blob;
+  uint8_t *mac_payload_p, *dest_addr_p, *next_dest_addr_p;
   int mac_payload_len, frame_len;
   uint8_t frame_buf[256];
-  bool wait_for_beacon = false;
+  bool wait_for_beacon = false, rsend_result, retransmit_last_frame = false;
 
   dout << "Transmit thread local created." << endl;
 
@@ -1034,49 +1063,84 @@ shcs_mac_impl::transmit_thread_local (void)
     /* Waiting for the right state */
     gr::thread::scoped_lock lock (d_tx_mutex);
     while (d_control_thread_state != DATA_TRANSMISSION_LOCAL) {
-      //dout << "thread local: waiting." << endl;
       d_tx_condvar.wait (lock);
-      //dout << "thread local: woke up." << endl;
     }
     lock.unlock ();
 
-    if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
-      /* There is data in transmit queue, pop it out and transmit */
-      blob = transmit_queue[TX_THREAD_LOCAL].front ();
-      dest_addr_p = (uint8_t*) pmt::blob_data (blob);
-      mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
-      mac_payload_len = pmt::blob_length (blob) - 2;
-      print_message (mac_payload_p, mac_payload_len);
+    if (!retransmit_last_frame) {
+      if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
+        /* There is data in transmit queue, pop it out and transmit */
+        blob = transmit_queue[TX_THREAD_LOCAL].front ();
+        transmit_queue[TX_THREAD_LOCAL].pop ();
+        dest_addr_p = (uint8_t*) pmt::blob_data (blob);
+        mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
+        mac_payload_len = pmt::blob_length (blob) - 2;
+        print_message (mac_payload_p, mac_payload_len);
 
-      generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
-                           frame_buf, frame_len);
-
-      /* Check dest_address to decide whether we need to wait for beacon or not*/
-      wait_for_beacon = false;
-      if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
-          && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
-          && (dest_addr_p[1] == 0)) {
-        wait_for_beacon = true;
-        dout << "MAC: need to wait for beacon." << endl;
+        generate_data_frame (dest_addr_p, d_ext_op_sender, mac_payload_p,
+                             mac_payload_len, frame_buf, frame_len);
       }
-
-      csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL, wait_for_beacon,
-                     frame_buf, frame_len);
-
-      transmit_queue[TX_THREAD_LOCAL].pop ();
+      else {
+        /* No data in the queue */
+        continue;
+      }
     }
+
+    /* Check dest_address to decide whether we need to wait for beacon or not*/
+    wait_for_beacon = false;
+    if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
+        && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
+        && (dest_addr_p[1] == 0)) {
+      wait_for_beacon = true;
+      dout << "MAC: need to wait for beacon." << endl;
+    }
+
+    rsend_result = csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL,
+                                  wait_for_beacon, frame_buf, frame_len);
+
+    /* Check resend result when we are in extended operation */
+    if (d_ext_op_sender && !rsend_result) {
+      /* We should return to common hopping channel */
+      d_ext_op_sender = false;
+      retransmit_last_frame = true;
+      d_control_thread_state = NULL_STATE;
+      dout << "TX_THREAD_LOCAL: Returning to CHC." << endl;
+      continue;
+    }
+
+    /* Check next packet to see whether we should turn on extended operation */
+    if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
+      next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
+
+      next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+      if (dest_addr_p[0] == next_dest_addr_p[0]
+          && dest_addr_p[1] == next_dest_addr_p[1]) {
+        dout << "TX_THREAD_LOCAL: turn on EXT_OP." << endl;
+        d_ext_op_sender = true;
+      }
+      else {
+        dout << "TX_THREAD_LOCAL: turn off EXT_OP (to different addr)." << endl;
+        d_ext_op_sender = false;
+      }
+    }
+    else {
+      dout << "TX_THREAD_LOCAL: turn off EXT_OP (no data in queue)." << endl;
+      d_ext_op_sender = false;
+    }
+
   }
+
 }
 
 /*------------------------------------------------------------------------*/
 void
 shcs_mac_impl::transmit_thread_parent (void)
 {
-  pmt::pmt_t blob;
-  uint8_t *mac_payload_p, *dest_addr_p;
+  pmt::pmt_t blob, next_blob;
+  uint8_t *mac_payload_p, *dest_addr_p, *next_dest_addr_p;
   int mac_payload_len, frame_len;
   uint8_t frame_buf[256];
-  bool wait_for_beacon;
+  bool wait_for_beacon = false, rsend_result, retransmit_last_frame = false;
 
   dout << "Transmit thread parent created." << endl;
 
@@ -1084,36 +1148,70 @@ shcs_mac_impl::transmit_thread_parent (void)
     /* Waiting for the right state */
     gr::thread::scoped_lock lock (d_tx_mutex);
     while (d_control_thread_state != DATA_TRANSMISSION_PARENT) {
-      //dout << "tx thread parent waiting." << endl;
       d_tx_condvar.wait (lock);
-      //dout << "tx thread parent wokeup." << endl;
     }
     lock.unlock ();
 
-    if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
-      /* There is data in transmit queue, pop it out and transmit */
-      blob = transmit_queue[TX_THREAD_PARENT].front ();
-      dest_addr_p = (uint8_t*) pmt::blob_data (blob);
-      mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
-      mac_payload_len = pmt::blob_length (blob) - 2;
-      print_message (mac_payload_p, mac_payload_len);
+    if (!retransmit_last_frame) {
+      if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
+        /* There is data in transmit queue, pop it out and transmit */
+        blob = transmit_queue[TX_THREAD_PARENT].front ();
+        transmit_queue[TX_THREAD_PARENT].pop ();
+        dest_addr_p = (uint8_t*) pmt::blob_data (blob);
+        mac_payload_p = (uint8_t*) pmt::blob_data (blob) + 2;
+        mac_payload_len = pmt::blob_length (blob) - 2;
+        print_message (mac_payload_p, mac_payload_len);
 
-      generate_data_frame (dest_addr_p, mac_payload_p, mac_payload_len,
-                           frame_buf, frame_len);
-      /* Check dest_address to decide whether we need to wait for beacon or not*/
-      wait_for_beacon = false;
-      if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
-          && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
-          && (dest_addr_p[1] == 0)) {
-        wait_for_beacon = true;
-        dout << "MAC: need to wait for beacon." << endl;
+        generate_data_frame (dest_addr_p, d_ext_op_sender, mac_payload_p,
+                             mac_payload_len, frame_buf, frame_len);
       }
-
-      csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT,
-                     wait_for_beacon, frame_buf, frame_len);
-
-      transmit_queue[TX_THREAD_PARENT].pop ();
+      else {
+        /* No data in the queue */
+        continue;
+      }
     }
+
+    /* Check dest_address to decide whether we need to wait for beacon or not*/
+    wait_for_beacon = false;
+    if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR)
+        && (dest_addr_p[0] == (uint8_t) d_assoc_suc_id)
+        && (dest_addr_p[1] == 0)) {
+      wait_for_beacon = true;
+      dout << "MAC: need to wait for beacon." << endl;
+    }
+
+    rsend_result = csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT,
+                                  wait_for_beacon, frame_buf, frame_len);
+
+    /* Check resend result when we are in extended operation */
+    if (d_ext_op_sender && !rsend_result) {
+      /* We should return to common hopping channel */
+      d_ext_op_sender = false;
+      retransmit_last_frame = true;
+      d_control_thread_state = NULL_STATE;
+      dout << "TX_THREAD_PARENT: Returning to CHC." << endl;
+      continue;
+    }
+
+    /* Check next packet to see whether we should turn on extended operation */
+    if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
+      next_blob = transmit_queue[TX_THREAD_PARENT].front ();
+
+      next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+      if (dest_addr_p[0] == next_dest_addr_p[0]
+          && dest_addr_p[1] == next_dest_addr_p[1]) {
+        dout << "TX_THREAD_PARENT: turn on EXT_OP." << endl;
+        d_ext_op_sender = true;
+      }
+      else {
+        dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
+            << endl;
+      }
+    }
+    else {
+      dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)." << endl;
+    }
+
   }
 }
 
@@ -1140,13 +1238,18 @@ shcs_mac_impl::crc16 (uint8_t *buf, int len)
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::generate_data_frame (const uint8_t *dest_addr,
+shcs_mac_impl::generate_data_frame (const uint8_t *dest_addr, const bool ext_op,
                                     const uint8_t *data_payload,
                                     int payload_len, uint8_t *obuf, int &olen)
 {
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
   uint8_t flags = IEEE802154_FCF_TYPE_DATA;
   le_uint16_t pan_id_le;
+
+  if (ext_op) {
+    flags |= IEEE802154_SHCS_EXT_OPERATION;
+  }
+
   if (d_nwk_dev_type == SUC) {
     pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
   }

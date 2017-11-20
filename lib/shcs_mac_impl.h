@@ -23,6 +23,7 @@
 
 #include <ieee802_15_4/shcs_mac.h>
 #include <boost/lockfree/spsc_queue.hpp>
+#include <boost/asio.hpp>
 
 namespace gr
 {
@@ -137,21 +138,20 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
-      const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
-      const uint16_t Th = 5; // ms, channel hopping duration.
+      static const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
+      static const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 20; // ms, sensing duration.
-      const uint16_t Tb = 20; // ms, beacon duration.
-      const uint16_t Tr = 5; // ms, reporting duration.
-      const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
-                                       // if needed.
+      static const uint16_t Tb = 20; // ms, beacon duration.
+      static const uint16_t Tr = 5; // ms, reporting duration.
+      static const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
+      // if needed.
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
       const uint8_t d_broadcast_addr[2] = { 0xFF, 0xFF };
       uint8_t d_mac_addr[2] = { 0x0, 0x0 };
 
-      bool d_ext_operation = false;
       bool d_assoc_current_sur_state = IN_PARENT_NWK; // Only be used in SUC's beacon,
       // should always be IN_PARENT_NWK for SUR's beacon
       const uint8_t EXT_OP_POS = 0;
@@ -209,8 +209,8 @@ namespace gr
       gr::thread::mutex d_tx_mutex;
 
       /* CSMA-CA rsend */
-      const int max_retries = 3;
-      const int max_retry_timeout = 500; /* ms */
+      static const int max_retries = 3;
+      static const int max_retry_timeout = 500; /* ms */
       gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
       gr::thread::mutex d_ack_m[max_transmit_threads];
       bool d_is_ack_received[max_transmit_threads] = { false, false };
@@ -218,6 +218,16 @@ namespace gr
       uint8_t d_ack_recv_seq_nr[max_transmit_threads];
       uint8_t d_last_recv_seqno = 0;
       bool d_is_first_recv_data_frame = true;
+
+      /* Extended operation */
+      bool d_ext_op_sender = false; /* Sender side */
+
+      /* Receiving side */
+//      static const int max_ext_op_recv_wait_time = (max_retries
+//          * max_retry_timeout) / Ts + 1; /* in number of time slots */
+      static const int max_ext_op_recv_wait_time = 3; /* in number of time slots */
+      int d_ext_op_recv_wait_time_left = 0;
+      gr::thread::mutex d_ext_op_recv_wait_time_mutex;
 
       /* Reporting thread */
       const int d_reporting_period = 10; /* s */
@@ -277,13 +287,18 @@ namespace gr
        *          output buffer.
        *
        * @param[in]   dest_addr, destination address (2 bytes).
+       * @param[in]   ext_op, extended operation.
        * @param[in]   data_payload, data payload buffer.
        * @param[in]   payload_len, data payload buffer length.
        * @param[out]  obuf, output buffer.
        * @param[in]   olen, output buffer length.
+       *
+       * Used private vars:
+       * - d_seq_nr
+       * - d_ext_operation
        */
       void
-      generate_data_frame (const uint8_t *dest_addr,
+      generate_data_frame (const uint8_t *dest_addr, const bool ext_op,
                            const uint8_t *data_payload, int payload_len,
                            uint8_t *obuf, int &olen);
 
@@ -294,6 +309,10 @@ namespace gr
        * @param[in]   seqno, sequence number to ack.
        * @param[out]  obuf, output buffer.
        * @param[in]   olen, output buffer length.
+       *
+       * Used private vars:
+       * - d_seq_nr
+       * - d_ext_operation
        */
       void
       generate_ack_frame (const uint8_t *dest_addr, int seqno, uint8_t *obuf,

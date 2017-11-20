@@ -59,6 +59,8 @@ extern "C" {
 #define IEEE802154_FCF_FRAME_PEND           (0x10)  /**< follow-up frame is pending */
 #define IEEE802154_FCF_ACK_REQ              (0x20)  /**< acknowledgement requested from receiver */
 #define IEEE802154_FCF_PAN_COMP             (0x40)  /**< compress source PAN ID */
+#define IEEE802154_SHCS_EXT_OPERATION       (0x80)  /* Extended operation */
+#define IEEE802154_SHCS_ASSOC_CURRENT_SUR_STATE (0x80)  /* Extended operation */
 
 #define IEEE802154_FCF_DST_ADDR_MASK        (0x0c)
 #define IEEE802154_FCF_DST_ADDR_VOID        (0x00)  /**< no destination address */
