@@ -303,7 +303,7 @@
     </param>
     <param>
       <key>msg</key>
-      <value>pmt.intern("This is a hello world string for testing\n")</value>
+      <value>pmt.intern("1.0 This is a hello world string for testing\n")</value>
     </param>
     <param>
       <key>minoutbuf</key>
@@ -334,7 +334,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(358, 116)</value>
+      <value>(376, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3155,13 +3155,13 @@
     <source_block_id>blocks_message_strobe_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>strobe</source_key>
-    <sink_key>bcin</sink_key>
+    <sink_key>rucin</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_socket_pdu_0_0</source_block_id>
     <sink_block_id>ieee802_15_4_rime_stack_0</sink_block_id>
     <source_key>pdus</source_key>
-    <sink_key>bcin</sink_key>
+    <sink_key>rucin</sink_key>
   </connection>
   <connection>
     <source_block_id>foo_packet_pad_0</source_block_id>
@@ -3226,7 +3226,7 @@
   <connection>
     <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
     <sink_block_id>blocks_socket_pdu_0_0</sink_block_id>
-    <source_key>bcout</source_key>
+    <source_key>rucout</source_key>
     <sink_key>pdus</sink_key>
   </connection>
   <connection>
