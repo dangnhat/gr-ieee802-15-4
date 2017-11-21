@@ -19,7 +19,7 @@
 #include "stubborn_sender.h"
 #include "uc_connection.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #define dout DEBUG && std::cout
 
 

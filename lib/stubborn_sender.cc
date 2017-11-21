@@ -19,7 +19,7 @@
 #include "stubborn_sender.h"
 #include "ruc_connection.h"
 
-#define debug 1
+#define debug 0
 #if debug
 #define dout std::cout
 #endif
