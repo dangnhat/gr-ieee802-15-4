@@ -128,17 +128,17 @@ namespace gr
       int d_nwk_dev_type;
 
       /* wireless channel configuration */
-      static const int num_of_channels = 3; // channel 23 -> 26: [2.465, ..., 2.480] GHz,
+      static const int num_of_channels = 4; // channel 23 -> 26: [2.465, ..., 2.480] GHz,
       const double channel_step = 5e6; // 5MHz step between 2 channels.
       const int first_channel_index = 24;
-      double center_freqs[num_of_channels] = { 2.470e9 }; // channel 23: 2.465GHz.
+      double center_freqs[num_of_channels] = { 2.465e9 }; // channel 23: 2.465GHz.
       int max_prio = 100;
-      int channel_prios[num_of_channels - 1] = { 33, 66 }; /* CDF style */
+      int channel_prios[num_of_channels - 1] = { 25, 50, 75 }; /* CDF style */
 
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      static const uint32_t Ts = 2000; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 20; // ms, sensing duration.
@@ -223,9 +223,9 @@ namespace gr
       bool d_ext_op_sender = false; /* Sender side */
 
       /* Receiving side */
-//      static const int max_ext_op_recv_wait_time = (max_retries
-//          * max_retry_timeout) / Ts + 1; /* in number of time slots */
-      static const int max_ext_op_recv_wait_time = 3; /* in number of time slots */
+      static const int max_ext_op_recv_wait_time = (max_retries
+          * max_retry_timeout) / Ts + 1; /* in number of time slots */
+//      static const int max_ext_op_recv_wait_time = 3; /* in number of time slots */
       int d_ext_op_recv_wait_time_left = 0;
       gr::thread::mutex d_ext_op_recv_wait_time_mutex;
 

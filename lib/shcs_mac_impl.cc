@@ -1113,26 +1113,29 @@ shcs_mac_impl::transmit_thread_local (void)
     }
 
     /* Check next packet to see whether we should turn on extended operation */
-    if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
-      next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
+    /* Only check when the last rsend was successful and in correct state */
+    if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_LOCAL) {
+      if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
+        next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
 
-      next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
-      if (dest_addr_p[0] == next_dest_addr_p[0]
-          && dest_addr_p[1] == next_dest_addr_p[1]) {
-        dout << "TX_THREAD_LOCAL: turn on EXT_OP." << endl;
-        d_ext_op_sender = true;
+        next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+        if (dest_addr_p[0] == next_dest_addr_p[0]
+            && dest_addr_p[1] == next_dest_addr_p[1]) {
+          dout << "TX_THREAD_LOCAL: turn on EXT_OP." << endl;
+          d_ext_op_sender = true;
+        }
+        else {
+          dout << "TX_THREAD_LOCAL: turn off EXT_OP (to different addr)."
+              << endl;
+          d_ext_op_sender = false;
+        }
       }
       else {
-        dout << "TX_THREAD_LOCAL: turn off EXT_OP (to different addr)." << endl;
+        dout << "TX_THREAD_LOCAL: turn off EXT_OP (no data in queue)." << endl;
         d_ext_op_sender = false;
       }
-    }
-    else {
-      dout << "TX_THREAD_LOCAL: turn off EXT_OP (no data in queue)." << endl;
-      d_ext_op_sender = false;
-    }
-
-  }
+    }/* End if EXT_OP */
+  }/* End while (1) */
 
 }
 
@@ -1202,25 +1205,27 @@ shcs_mac_impl::transmit_thread_parent (void)
     }
 
     /* Check next packet to see whether we should turn on extended operation */
-    if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
-      next_blob = transmit_queue[TX_THREAD_PARENT].front ();
+    /* Only check when the last rsend was successful and in correct state */
+    if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_PARENT) {
+      if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
+        next_blob = transmit_queue[TX_THREAD_PARENT].front ();
 
-      next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
-      if (dest_addr_p[0] == next_dest_addr_p[0]
-          && dest_addr_p[1] == next_dest_addr_p[1]) {
-        dout << "TX_THREAD_PARENT: turn on EXT_OP." << endl;
-        d_ext_op_sender = true;
+        next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+        if (dest_addr_p[0] == next_dest_addr_p[0]
+            && dest_addr_p[1] == next_dest_addr_p[1]) {
+          dout << "TX_THREAD_PARENT: turn on EXT_OP." << endl;
+          d_ext_op_sender = true;
+        }
+        else {
+          dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
+              << endl;
+        }
       }
       else {
-        dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
-            << endl;
+        dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)." << endl;
       }
-    }
-    else {
-      dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)." << endl;
-    }
-
-  }
+    } /* End if EXT_OP */
+  } /* End while (1) */
 }
 
 /*------------------------------------------------------------------------*/
