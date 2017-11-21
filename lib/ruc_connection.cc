@@ -207,7 +207,8 @@ ruc_connection::reporting_thread_func (void)
   int count = 0;
   uint64_t success, total;
 
-  std::cout << "Time,Total,Success,SuccessPacketsPerPeriod" << std::endl;
+  boost::this_thread::sleep_for (boost::chrono::seconds (3));
+  std::cout << "\nTime,Total,Success,SuccessPacketsPerPeriod" << std::endl;
   while (1) {
     /* Sleep for 10s  */
     boost::this_thread::sleep_for (boost::chrono::seconds (reporting_time));
