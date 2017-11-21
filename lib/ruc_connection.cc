@@ -31,7 +31,12 @@ ruc_connection::ruc_connection(rime_stack* block, uint16_t channel,
 	: rime_connection(block, channel, inport, outport, rime_add_mine),
 	d_stubborn_sender(block, this, d_mac_outport), d_send_seqno(0), d_recv_seqno(0)
 {
-	d_stubborn_sender.start();
+	d_stubborn_sender.start(1000, 3);
+
+  /* Reporting thread */
+    reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+        new gr::thread::thread (
+            boost::bind (&ruc_connection::reporting_thread_func, this)));
 }
 
 std::array<uint8_t, 256>
@@ -143,7 +148,8 @@ ruc_connection::unpack(pmt::pmt_t msg)
 		dout << " (should be: ";
 		dout << recv_seqno() << ")"<< std::endl;
 		return;
-	}
+		}
+
 		dout << "received ack for seqno ";
 		dout << static_cast<int>(packet_seqno) << std::endl;
 
@@ -151,6 +157,11 @@ ruc_connection::unpack(pmt::pmt_t msg)
 		inc_recv_seqno();
 
 		dout << "expected next seqno: " << d_recv_seqno << std::endl;
+
+		/* Increase number of successful sent packets */
+		gr::thread::scoped_lock lock(d_mutex);
+		d_total_successful_packets++;
+		lock.unlock();
 
 	} else { 
 		//output message
@@ -180,6 +191,7 @@ ruc_connection::inc_recv_seqno()
 {
 	gr::thread::scoped_lock lock(d_mutex);
 	d_recv_seqno = (d_recv_seqno + 1)%(1 << seqno_bits);
+	d_total_sent_packets++;
 }
 
 int
@@ -189,5 +201,29 @@ ruc_connection::recv_seqno()
 	return d_recv_seqno;
 }
 
+void
+ruc_connection::reporting_thread_func (void)
+{
+  int count = 0;
+  uint64_t success, total;
+
+  std::cout << "Time,Total,Success,SuccessPacketsPerPeriod" << std::endl;
+  while (1) {
+    /* Sleep for 10s  */
+    boost::this_thread::sleep_for (boost::chrono::seconds (reporting_time));
+
+    /* Reporting */
+    gr::thread::scoped_lock lock(d_mutex);
+    success = d_total_successful_packets;
+    total = d_total_sent_packets;
+    lock.unlock();
+
+    std::cout << count*reporting_time << "," << total << "," << success
+        << "," << success - d_prev_total_successful_packets << std::endl;
+
+    d_prev_total_successful_packets = success;
+    count++;
+  }
+}
 
 

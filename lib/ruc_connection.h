@@ -32,6 +32,11 @@ namespace gr{
 			int d_recv_seqno;
 			stubborn_sender d_stubborn_sender;
 			gr::thread::mutex d_mutex;
+			boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
+			uint64_t d_total_successful_packets = 0;
+			uint64_t d_total_sent_packets = 0;
+			uint64_t d_prev_total_successful_packets = 0;
+			static const int reporting_time = 10; // s.
 		public:
 			static std::array<uint8_t, 256> make_msgbuf(uint16_t channel, bool ack, int seqno,
 					const uint8_t src[2], const uint8_t dest[2]);
@@ -42,6 +47,7 @@ namespace gr{
 			void unpack(pmt::pmt_t msg);
 			void inc_recv_seqno();
 			int recv_seqno();
+			void reporting_thread_func (void);
 		};
 	}
 }

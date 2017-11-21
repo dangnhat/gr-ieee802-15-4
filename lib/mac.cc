@@ -50,9 +50,9 @@ public:
     message_port_register_out (pmt::mp ("pdu out"));
 
     /* Reporting thread */
-    reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-        new gr::thread::thread (
-            boost::bind (&mac_impl::reporting_thread_func, this)));
+//    reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+//        new gr::thread::thread (
+//            boost::bind (&mac_impl::reporting_thread_func, this)));
   }
 
   ~mac_impl (void)
