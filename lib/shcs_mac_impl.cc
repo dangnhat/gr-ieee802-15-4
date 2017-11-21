@@ -582,19 +582,19 @@ shcs_mac_impl::data_duration (void)
 void
 shcs_mac_impl::reload_tasks (void)
 {
+  /* SUR: switch network */
+  if (d_nwk_dev_type == SUR) {
+    d_sur_state = !d_sur_state;
+  }
+
+  /* SUC: switch current SUR should-be state */
+  if (d_nwk_dev_type == SUC) {
+    d_assoc_current_sur_state = !d_assoc_current_sur_state;
+  }
+
   /* Check d_ex_op_wait_time_left */
   if ((!d_ext_op_sender) && (d_ext_op_recv_wait_time_left <= 0)) {
     d_control_thread_state = RELOADING;
-
-    /* SUR: switch network */
-    if (d_nwk_dev_type == SUR) {
-      d_sur_state = !d_sur_state;
-    }
-
-    /* SUC: switch current SUR should-be state */
-    if (d_nwk_dev_type == SUC) {
-      d_assoc_current_sur_state = !d_assoc_current_sur_state;
-    }
 
     /* Perform channel hopping */
     tasks_processor::get ().run_at (
@@ -631,11 +631,6 @@ shcs_mac_impl::reload_tasks (void)
   else {
     /* Extended operation */
     dout << "MAC: Reload task: in EXT_OP" << endl;
-
-    /* SUC: switch current SUR should-be state */
-    if (d_nwk_dev_type == SUC) {
-      d_assoc_current_sur_state = !d_assoc_current_sur_state;
-    }
 
     current_rand_seed = rng ();
 
