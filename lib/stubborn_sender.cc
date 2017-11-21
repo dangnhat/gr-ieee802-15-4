@@ -20,9 +20,7 @@
 #include "ruc_connection.h"
 
 #define debug 0
-#if debug
-#define dout std::cout
-#endif
+#define dout debug && std::cout
 
 using namespace gr::ieee802_15_4;
 
