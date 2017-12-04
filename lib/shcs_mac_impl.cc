@@ -1106,7 +1106,8 @@ shcs_mac_impl::transmit_thread_local (void)
     }
 
     rsend_result = csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL,
-                                  wait_for_beacon, suc_wait_for_sur, frame_buf, frame_len);
+                                  wait_for_beacon, suc_wait_for_sur, frame_buf,
+                                  frame_len);
 
     /* Check resend result when we are in extended operation */
     if (d_ext_op_sender && !rsend_result) {
