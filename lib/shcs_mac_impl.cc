@@ -347,7 +347,7 @@ shcs_mac_impl::phy_transmit (const uint8_t *buf, int len)
 /*------------------------------------------------------------------------*/
 bool
 shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
-                             const uint8_t *buf, int len)
+                             bool suc_wait_for_sur, const uint8_t *buf, int len)
 {
   int num_of_backoffs = 0, backoff_exp = 0;
   int backoff_time, backoff_time_max;
@@ -356,7 +356,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
     /* Wait until transmit state */
     gr::thread::scoped_lock lock (d_tx_mutex);
     while (d_control_thread_state != transmit_state
-        || (wait_for_beacon && !is_beacon_received)) {
+        || (wait_for_beacon && !is_beacon_received)
+        || (suc_wait_for_sur && d_assoc_current_sur_state == IN_PARENT_NWK)) {
       d_tx_condvar.wait (lock);
     }
     lock.unlock ();
@@ -399,7 +400,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
 bool
 shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
                               uint16_t transmit_state, bool wait_for_beacon,
-                              const uint8_t *buf, int len)
+                              bool suc_wait_for_sur, const uint8_t *buf,
+                              int len)
 {
   uint8_t seqno, backup_buf[256];
 //  uint8_t dest_addr[8];
@@ -417,7 +419,7 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     /* Send data */
     dout << "RSend: Send #" << int (seqno) << " try " << count << endl;
-    csma_ca_send (transmit_state, wait_for_beacon, buf, len);
+    csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf, len);
 
     /* Wait for ACK */
     gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
@@ -851,6 +853,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
         dout << "Next time slot start: " << time_slot_start << endl;
+        cout << "SUR/SU: connected to 0x" << hex << d_assoc_suc_id << endl;
 
         /* Wake up control thread */
         control_thread_ptr->interrupt ();
@@ -1050,7 +1053,8 @@ shcs_mac_impl::transmit_thread_local (void)
   uint8_t *mac_payload_p, *dest_addr_p, *next_dest_addr_p;
   int mac_payload_len, frame_len;
   uint8_t frame_buf[256];
-  bool wait_for_beacon = false, rsend_result, retransmit_last_frame = false;
+  bool wait_for_beacon = false, suc_wait_for_sur = false, rsend_result,
+      retransmit_last_frame = false;
 
   dout << "Transmit thread local created." << endl;
 
@@ -1094,8 +1098,15 @@ shcs_mac_impl::transmit_thread_local (void)
       dout << "TX_THREAD_LOCAL: need to wait for beacon." << endl;
     }
 
+    /* Check dest_address to decide whether SUC needs to wait for SUR to return or not */
+    suc_wait_for_sur = false;
+    if (d_nwk_dev_type == SUC && (dest_addr_p[1] == 0)) {
+      suc_wait_for_sur = true;
+      dout << "TX_THREAD_LOCAL: SUC needs to wait for SUR." << endl;
+    }
+
     rsend_result = csma_ca_rsend (TX_THREAD_LOCAL, DATA_TRANSMISSION_LOCAL,
-                                  wait_for_beacon, frame_buf, frame_len);
+                                  wait_for_beacon, suc_wait_for_sur, frame_buf, frame_len);
 
     /* Check resend result when we are in extended operation */
     if (d_ext_op_sender && !rsend_result) {
@@ -1187,7 +1198,7 @@ shcs_mac_impl::transmit_thread_parent (void)
     }
 
     rsend_result = csma_ca_rsend (TX_THREAD_PARENT, DATA_TRANSMISSION_PARENT,
-                                  wait_for_beacon, frame_buf, frame_len);
+                                  wait_for_beacon, false, frame_buf, frame_len);
 
     /* Check resend result when we are in extended operation */
     if (d_ext_op_sender && !rsend_result) {

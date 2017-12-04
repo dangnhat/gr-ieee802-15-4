@@ -97,7 +97,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1064, 8)</value>
+      <value>(928, 8)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -196,7 +196,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(920, 8)</value>
+      <value>(784, 8)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -259,7 +259,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(776, 8)</value>
+      <value>(640, 8)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -334,7 +334,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(888, 331)</value>
+      <value>(880, 332)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -546,7 +546,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(672, 339)</value>
+      <value>(664, 340)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -670,6 +670,14 @@
       <value></value>
     </param>
     <param>
+      <key>debug</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>default_route</key>
+      <value>[1,2]</value>
+    </param>
+    <param>
       <key>_enabled</key>
       <value>True</value>
     </param>
@@ -700,6 +708,10 @@
     <param>
       <key>ruc_channels</key>
       <value>[132]</value>
+    </param>
+    <param>
+      <key>routing</key>
+      <value>True</value>
     </param>
     <param>
       <key>uc_channels</key>
@@ -816,7 +828,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(688, 556)</value>
+      <value>(664, 548)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1739,7 +1751,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(688, 440)</value>
+      <value>(664, 424)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -3074,7 +3086,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(56, 448)</value>
+      <value>(72, 448)</value>
     </param>
     <param>
       <key>_rotation</key>

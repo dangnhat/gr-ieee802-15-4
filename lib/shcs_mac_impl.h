@@ -404,6 +404,8 @@ namespace gr
        *
        * @param[in] wait_for_beacon. true if it needs to wait for beacon
        *            before transmitting.
+       * @param[in] wait_for_sur. true if SUC needs to wait for SUR to arrive
+       *            before transmitting.
        * @param[in] transmit_state. It will wait until control thread is in
        *            this state before sending.
        *
@@ -419,7 +421,7 @@ namespace gr
        */
       bool
       csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
-                    const uint8_t *buf, int len);
+                    bool wait_for_sur, const uint8_t *buf, int len);
 
       /**
        * @brief   Perform reliable CSMA CA unicast with Idle RQ.
@@ -444,7 +446,8 @@ namespace gr
        */
       bool
       csma_ca_rsend (uint8_t transmit_thread_id, uint16_t transmit_state,
-                     bool wait_for_beacon, const uint8_t *buf, int len);
+                     bool wait_for_beacon, bool suc_wait_for_sur,
+                     const uint8_t *buf, int len);
 
       /**
        * @brief   Safely increase seqno with mutex.
