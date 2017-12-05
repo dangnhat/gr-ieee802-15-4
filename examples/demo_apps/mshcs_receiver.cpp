@@ -42,7 +42,7 @@ main ()
   struct sockaddr_in send_addr;
   int received_buf_len;
 
-  cout << "This is NGRC project SUC demo application" << endl;
+  cout << "This is MSHCS round trip delay test - Receiver side." << endl;
 
   /* Added signal handle for Ctrl-C */
   signal (SIGINT, intHandler);
@@ -66,6 +66,7 @@ main ()
   /* Wait for message from SUs and forward them to control center */
   while (1) {
     /* Waiting for messages */
+    cout << "Waiting for message..." << endl;
     received_buf_len = recvfrom (suc_socket_fd, (void *) buffer, buffer_len, 0,
                                  (sockaddr *) &client_addr, &client_addr_len);
     if (received_buf_len == -1) {
@@ -84,12 +85,11 @@ main ()
 
     memset ((char *) &send_addr, 0, sizeof(send_addr));
     send_addr.sin_family = AF_INET;
-    send_addr.sin_addr.s_addr = htonl (INADDR_ANY);
     inet_aton (addr.c_str (), &send_addr.sin_addr);
     send_addr.sin_port = htons (send_udp_port);
 
     sendto (send_socket_fd, (void *) buffer, received_buf_len, 0,
-            (sockaddr *) &client_addr, client_addr_len);
+            (sockaddr *) &send_addr, sizeof(send_addr));
     close (send_socket_fd);
   }
 

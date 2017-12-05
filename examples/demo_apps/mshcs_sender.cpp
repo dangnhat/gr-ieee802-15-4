@@ -90,7 +90,6 @@ main ()
     message.clear ();
     message.str ("");
     message << recv_addr_s << " " << send_addr_s << " " << seqno << endl;
-    cout << "Message: " << message.str () << endl;
 
     /* Create a socket */
     if ((send_socket_fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
@@ -109,6 +108,7 @@ main ()
     cout << "Random wait time: " << rand_wait_time << endl;
     sleep (rand_wait_time);
 
+    cout << "Sending: " << message.str () << endl;
     sendto (send_socket_fd, message.str ().c_str (), message.str ().length (),
             0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
     close (send_socket_fd);
@@ -127,7 +127,7 @@ main ()
       /* Get current time */
       ack_time = system_clock::now ();
 
-      ack_buffer[ack_recv_buffer_len] = 0;
+      ack_buffer[ack_recv_buffer_len] = '\0';
       cout << "Received: " << ack_buffer << endl;
 
       string s (ack_buffer);
