@@ -1226,10 +1226,12 @@ shcs_mac_impl::transmit_thread_parent (void)
         else {
           dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
               << endl;
+          d_ext_op_sender = false;
         }
       }
       else {
         dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)." << endl;
+        d_ext_op_sender = false;
       }
     } /* End if EXT_OP */
   } /* End while (1) */
