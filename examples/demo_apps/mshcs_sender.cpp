@@ -26,8 +26,8 @@ string addr = "127.0.0.1";
 int send_port = 52001, recv_port = 52002;
 int send_socket_fd, recv_socket_fd;
 
-const string recv_addr = "12.34";
-const string send_addr = "12.35";
+const string recv_addr_s = "12.34";
+const string send_addr_s = "12.35";
 const int wait_time_range[2] = { 2, 10 };
 //const string message = "Hello World.\n";
 
@@ -89,7 +89,7 @@ main ()
     /* Generate su_status message */
     message.clear ();
     message.str ("");
-    message << recv_addr << " " << send_addr << " " << seqno << endl;
+    message << recv_addr_s << " " << send_addr_s << " " << seqno << endl;
     cout << "Message: " << message.str () << endl;
 
     /* Create a socket */
@@ -136,12 +136,13 @@ main ()
     }
     else {
       /* Get current time */
-      ack_time = system_clock ();
+      ack_time = system_clock::now ();
 
       ack_buffer[ack_recv_buffer_len] = 0;
       cout << "Received: " << ack_buffer << endl;
 
-      string ack_string (ack_buffer);
+      string s (ack_buffer);
+      stringstream ack_string (s);
       ack_string >> recv_seqno;
       if (recv_seqno == seqno) {
         numAckedPackets++;
