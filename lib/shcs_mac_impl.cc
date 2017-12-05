@@ -174,9 +174,9 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   }
 
   /* Reporting thread */
-  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-      new gr::thread::thread (
-          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
+//  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+//      new gr::thread::thread (
+//          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
 }
 
 /*------------------------------------------------------------------------*/
@@ -1019,7 +1019,7 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
     return;
   }
 
-  //dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
+  dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
   if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR) && !d_su_connected) {
@@ -1028,7 +1028,7 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
   }
 
   /* Push to transmit queue */
-//      print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
+  print_message ((uint8_t*) pmt::blob_data (blob), pmt::blob_length (blob));
   uint8_t dest_suc_id = ((uint8_t*) pmt::blob_data (blob))[0];
   if (d_nwk_dev_type == SUR && dest_suc_id == d_assoc_suc_id) {
 //    dout << "SUR: push to transmit queue parent, dest: " << int (dest_suc_id)
