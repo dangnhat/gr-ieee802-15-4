@@ -1,9 +1,9 @@
-all: su suc
+all: sender receiver
 
-su: 
-	g++ ngrc_su_app.cpp -o su_demo.out
+sender: 
+	g++ mshcs_sender.cpp -o sender.out
 suc: 
-	g++ ngrc_suc_app.cpp -o suc_demo.out
+	g++ mshcs_receiver.cpp -o receiver.out
 	
 clean:
 	rm -f  *.out

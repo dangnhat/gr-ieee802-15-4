@@ -404,7 +404,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(592, 120)</value>
+      <value>(520, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -412,7 +412,7 @@
     </param>
     <param>
       <key>host</key>
-      <value>127.0.0.1</value>
+      <value></value>
     </param>
     <param>
       <key>id</key>
@@ -433,6 +433,65 @@
     <param>
       <key>port</key>
       <value>52001</value>
+    </param>
+    <param>
+      <key>tcp_no_delay</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>"UDP_SERVER"</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_socket_pdu</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(664, 120)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>180</value>
+    </param>
+    <param>
+      <key>host</key>
+      <value>127.0.0.1</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_socket_pdu_0_0_0</value>
+    </param>
+    <param>
+      <key>mtu</key>
+      <value>10000</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>port</key>
+      <value>52002</value>
     </param>
     <param>
       <key>tcp_no_delay</key>
@@ -3435,7 +3494,7 @@
   </connection>
   <connection>
     <source_block_id>ieee802_15_4_rime_stack_0</source_block_id>
-    <sink_block_id>blocks_socket_pdu_0_0</sink_block_id>
+    <sink_block_id>blocks_socket_pdu_0_0_0</sink_block_id>
     <source_key>ucout</source_key>
     <sink_key>pdus</sink_key>
   </connection>
