@@ -137,8 +137,8 @@ uc_connection::unpack (pmt::pmt_t msg)
           << int (dest[1]) << endl;
       return;
     }
-    dout << "#RIME: Forward -> next_hop_mac: " << int(next_hop_mac_addr[0]) << "."
-        << int(next_hop_mac_addr[1]) << endl;
+    dout << "#RIME: Forward -> next_hop_mac: " << int (next_hop_mac_addr[0])
+        << "." << int (next_hop_mac_addr[1]) << endl;
 
     /* Send packet to MAC layer */
     pmt::pmt_t to_mac_msg = pmt::make_blob (buf, data_len + 2);
@@ -158,11 +158,20 @@ const int routing_table_max_rows = 16;
 const int routing_table_max_cols = 4;
 typedef uint8_t routing_table_t[routing_table_max_rows][routing_table_max_cols];
 
+const routing_table_t suc_routing_table = { // dest RIME address, next hop MAC address.
+    { 12, 35, 1, 0 }, { 12, 36, 1, 0 }, { 12, 37, 1, 0 }, { 12, 38, 1, 0 },};
+
 const routing_table_t sur1_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 34, 1, 0 }, };
+    { 12, 34, 0, 0 },
+    { 12, 36, 2, 0 }, { 12, 37, 2, 0 }, { 12, 38, 2, 0 }, };
 
 const routing_table_t sur2_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 34, 2, 0 }, { 12, 35, 2, 0 }, };
+    { 12, 34, 1, 0 }, { 12, 35, 1, 0 },
+    { 12, 37, 3, 0 }, { 12, 38, 3, 0 }, };
+
+const routing_table_t sur3_routing_table = { // dest RIME address, next hop MAC address.
+    { 12, 34, 2, 0 }, { 12, 35, 2, 0 }, { 12, 36, 2, 0 },
+    { 12, 38, 3, 1 }, };
 
 int
 uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
@@ -178,7 +187,7 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
   else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 36)) {
     routing_table = &sur2_routing_table;
   }
-  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 37)) {
+  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 38)) {
     /* TODO: hard coded default route for SU1 */
     next_hop_mac[0] = 3;
     next_hop_mac[1] = 0;
@@ -186,11 +195,11 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
     return 0;
   }
   else if ((d_rime_add_mine[0] == 52) && (d_rime_add_mine[1] == 35)) {
-      /* TODO: hard coded default route for SU1 (perf test) */
-      next_hop_mac[0] = 5;
-      next_hop_mac[1] = 0;
+    /* TODO: hard coded default route for SU1 (perf test) */
+    next_hop_mac[0] = 5;
+    next_hop_mac[1] = 0;
 
-      return 0;
+    return 0;
   }
   else {
     return -1;

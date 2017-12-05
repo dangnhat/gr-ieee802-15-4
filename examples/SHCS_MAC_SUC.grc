@@ -872,7 +872,7 @@
     </param>
     <param>
       <key>mac_addr</key>
-      <value>[1,0]</value>
+      <value>[0,0]</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -888,7 +888,7 @@
     </param>
     <param>
       <key>suc_id</key>
-      <value>1</value>
+      <value>0</value>
     </param>
   </block>
   <block>
