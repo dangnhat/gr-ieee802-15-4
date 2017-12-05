@@ -98,17 +98,6 @@ main ()
       return 0;
     }
 
-    memset ((char *) &myaddr, 0, sizeof(myaddr));
-    myaddr.sin_family = AF_INET;
-    myaddr.sin_addr.s_addr = htonl (INADDR_ANY);
-    myaddr.sin_port = htons (0);
-
-    if (bind (send_socket_fd, (struct sockaddr *) &myaddr, sizeof(myaddr))
-        < 0) {
-      cout << "bind failed" << endl;
-      return 0;
-    }
-
     /* periodically send status to Coordinator */
     dest_addr.sin_family = AF_INET;
     inet_aton (addr.c_str (), &dest_addr.sin_addr);

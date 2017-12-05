@@ -19,6 +19,7 @@
 using namespace std;
 
 /* SUC UDP server info */
+string addr = "127.0.0.1";
 int suc_udp_server_port = 52002, send_udp_port = 52001;
 const uint32_t buffer_len = 256;
 char buffer[buffer_len];
@@ -84,13 +85,8 @@ main ()
     memset ((char *) &send_addr, 0, sizeof(send_addr));
     send_addr.sin_family = AF_INET;
     send_addr.sin_addr.s_addr = htonl (INADDR_ANY);
+    inet_aton (addr.c_str (), &send_addr.sin_addr);
     send_addr.sin_port = htons (send_udp_port);
-
-    if (bind (send_socket_fd, (struct sockaddr *) &send_addr, sizeof(send_addr))
-        < 0) {
-      cout << "bind failed" << endl;
-      return 0;
-    }
 
     sendto (send_socket_fd, (void *) buffer, received_buf_len, 0,
             (sockaddr *) &client_addr, client_addr_len);
