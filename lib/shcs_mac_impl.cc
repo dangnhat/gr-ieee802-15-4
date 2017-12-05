@@ -357,7 +357,7 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
     gr::thread::scoped_lock lock (d_tx_mutex);
     while (d_control_thread_state != transmit_state
         || (wait_for_beacon && !is_beacon_received)
-        || (suc_wait_for_sur && d_assoc_current_sur_state == IN_PARENT_NWK)) {
+        || (suc_wait_for_sur && d_assoc_current_sur_state == IN_LOCAL_NWK)) {
       d_tx_condvar.wait (lock);
     }
     lock.unlock ();
@@ -1019,7 +1019,7 @@ shcs_mac_impl::app_in (pmt::pmt_t msg)
     return;
   }
 
-  dout << "MAC: new RIME msg, len: " << pmt::blob_length (blob) << endl;
+  dout << "MAC: new RIME msg from APP, len: " << pmt::blob_length (blob) << endl;
 
   /* If SU is not connected, drop all packets */
   if ((d_nwk_dev_type == SU || d_nwk_dev_type == SUR) && !d_su_connected) {
