@@ -136,7 +136,7 @@ main ()
       if (recv_seqno == seqno) {
         numAckedPackets++;
         cout << "ACKed for #" << seqno << ", acked: " << numAckedPackets
-            << ", RTT: " << ack_time - send_time << endl;
+            << ", RTT: " << duration_cast<milliseconds>(ack_time - send_time) << endl;
       }
     }
 
