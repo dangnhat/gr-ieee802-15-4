@@ -149,7 +149,7 @@ uc_connection::unpack (pmt::pmt_t msg)
     return;
   }
 
-  cout << "#RIME: Forward to application: " << buf + 2 + header_length << endl;
+  dout << "#RIME: Forward to application: " << buf + 2 + header_length << endl;
   pmt::pmt_t rime_payload = pmt::make_blob (buf + 2 + header_length,
                                             data_len - header_length);
   d_block->message_port_pub (d_outport, pmt::cons (pmt::PMT_NIL, rime_payload));
