@@ -29,8 +29,6 @@ using namespace boost::chrono;
 #define BUFLEN 512  //Max length of buffer
 #define PORT 52001   //The port on which to send data
 
-const string recv_addr_s = "12.34";
-const string send_addr_s = "12.35";
 const int wait_time_range[2] = { 2, 10 };
 
 int socket_fd;
@@ -64,7 +62,13 @@ main (void)
   system_clock::time_point send_time, ack_time;
   int rand_wait_time;
 
+  string recv_addr_s, send_addr_s;
+
   cout << "This is MSHCS round trip delay test - sender side." << endl;
+  cout << "Enter sender address:" << endl;
+  cin >> send_addr_s;
+  cout << "Enter receiver address:" << endl;
+  cin >> recv_addr_s;
 
   /* Added signal handle for Ctrl-C */
   signal (SIGINT, intHandler);
