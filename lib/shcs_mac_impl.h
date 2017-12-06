@@ -141,8 +141,8 @@ namespace gr
       static const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint16_t Th = 5; // ms, channel hopping duration.
-      uint16_t Tss = 20; // ms, sensing duration.
-      static const uint16_t Tb = 20; // ms, beacon duration.
+      uint16_t Tss = 10; // ms, sensing duration.
+      static const uint16_t Tb = 10; // ms, beacon duration.
       static const uint16_t Tr = 5; // ms, reporting duration.
       static const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
       // if needed.
