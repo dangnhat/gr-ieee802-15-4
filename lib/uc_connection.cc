@@ -117,6 +117,7 @@ void
 uc_connection::unpack (pmt::pmt_t msg)
 {
   unsigned char buf[256];
+  memset(buf, 0, 256);
   size_t data_len = pmt::blob_length (msg);
   memcpy (buf + 2, pmt::blob_data (msg), data_len);
 
@@ -148,6 +149,7 @@ uc_connection::unpack (pmt::pmt_t msg)
     return;
   }
 
+  cout << "#RIME: Forward to application: " << buf + 2 + header_length << endl;
   pmt::pmt_t rime_payload = pmt::make_blob (buf + 2 + header_length,
                                             data_len - header_length);
   d_block->message_port_pub (d_outport, pmt::cons (pmt::PMT_NIL, rime_payload));
