@@ -34,9 +34,9 @@ ruc_connection::ruc_connection(rime_stack* block, uint16_t channel,
 	d_stubborn_sender.start(1000, 3);
 
   /* Reporting thread */
-    reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-        new gr::thread::thread (
-            boost::bind (&ruc_connection::reporting_thread_func, this)));
+//    reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+//        new gr::thread::thread (
+//            boost::bind (&ruc_connection::reporting_thread_func, this)));
 }
 
 std::array<uint8_t, 256>

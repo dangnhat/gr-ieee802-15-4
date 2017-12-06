@@ -25,6 +25,8 @@ using namespace boost::chrono;
  Simple udp client
  */
 
+#define dout debug && cout
+
 #define SERVER "127.0.0.1"
 #define BUFLEN 512  //Max length of buffer
 #define PORT 52001   //The port on which to send data
@@ -32,6 +34,7 @@ using namespace boost::chrono;
 const int wait_time_range[2] = { 2, 10 };
 
 int socket_fd;
+bool debug;
 
 void
 intHandler (int dummy)
@@ -43,7 +46,7 @@ intHandler (int dummy)
 void
 die (const char *s)
 {
-  cout << s << endl;
+  dout << s << endl;
   close (socket_fd);
   exit (1);
 }
@@ -65,10 +68,16 @@ main (void)
   string recv_addr_s, send_addr_s;
 
   cout << "This is MSHCS round trip delay test - sender side." << endl;
-  cout << "Enter sender address:" << endl;
-  cin >> send_addr_s;
   cout << "Enter receiver address:" << endl;
   cin >> recv_addr_s;
+  cout << "Enter sender address:" << endl;
+  cin >> send_addr_s;
+  cout << "Debug (1/0)?" << endl;
+  cin >> debug;
+
+  if (!debug) {
+    cout << "Sent,Acked,RTT" << endl;
+  }
 
   /* Added signal handle for Ctrl-C */
   signal (SIGINT, intHandler);
@@ -105,10 +114,10 @@ main (void)
     /* Wait for a random time */
     rand_wait_time = rand () % (wait_time_range[1] - wait_time_range[0] + 1)
         + wait_time_range[0];
-    cout << "Random wait time: " << rand_wait_time << endl;
+    dout << "Random wait time: " << rand_wait_time << endl;
     sleep (rand_wait_time);
 
-    cout << "Sending: " << message.str () << endl;
+    dout << "Sending: " << message.str () << endl;
 
     //send the message
     if (sendto (socket_fd, message.str ().c_str (), message.str ().length (), 0,
@@ -127,7 +136,7 @@ main (void)
       //try to receive some data, this is a blocking call
       if (recvfrom (socket_fd, ack_buf, BUFLEN, 0,
                     (struct sockaddr *) &si_other, &slen) == -1) {
-        cout << "Recvfrom error or timeout" << endl;
+        dout << "Recvfrom error or timeout" << endl;
 
         seqno++;
         break;
@@ -136,16 +145,20 @@ main (void)
         /* Get current time */
         ack_time = system_clock::now ();
 
-        cout << "Received: " << ack_buf << endl;
+        dout << "Received: " << ack_buf << endl;
 
         string ack_s (ack_buf);
         stringstream ack_ss (ack_s);
         ack_ss >> recv_seqno;
         if (recv_seqno == seqno) {
           num_acked++;
-          cout << "ACKed for #" << seqno << ", num_acked: " << num_acked
+          dout << "ACKed for #" << seqno << ", num_acked: " << num_acked
               << ", RTT: " << duration_cast<milliseconds> (ack_time - send_time)
               << endl;
+          if (!debug) {
+            cout << seqno + 1 << "," << num_acked << ","
+                << duration_cast<milliseconds> (ack_time - send_time) << endl;
+          }
 
           seqno++;
           break;

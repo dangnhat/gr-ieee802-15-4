@@ -138,7 +138,7 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      static const uint32_t Ts = 100; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Ts = 200; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 10; // ms, sensing duration.
@@ -210,7 +210,7 @@ namespace gr
 
       /* CSMA-CA rsend */
       static const int max_retries = 3;
-      static const int max_retry_timeout = 1000; /* ms */
+      static const int max_retry_timeout = 300; /* ms */
       gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
       gr::thread::mutex d_ack_m[max_transmit_threads];
       bool d_is_ack_received[max_transmit_threads] = { false, false };
