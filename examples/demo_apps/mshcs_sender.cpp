@@ -15,8 +15,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sstream>
-#include <boost/chrono.hpp>
 #include <signal.h>
+#include <boost/chrono.hpp>
+#include <boost/thread/thread.hpp>
 
 using namespace std;
 using namespace boost::chrono;
@@ -31,7 +32,7 @@ using namespace boost::chrono;
 #define BUFLEN 512  //Max length of buffer
 #define PORT 52001   //The port on which to send data
 
-const int wait_time_range[2] = { 0, 3 };
+const int wait_time_range[2] = { 0, 300 }; /* *10ms */
 
 int socket_fd;
 bool debug;
@@ -115,7 +116,7 @@ main (void)
     rand_wait_time = rand () % (wait_time_range[1] - wait_time_range[0] + 1)
         + wait_time_range[0];
     dout << "Random wait time: " << rand_wait_time << endl;
-    sleep (rand_wait_time);
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(rand_wait_time*10));
 
     dout << "Sending: " << message.str () << endl;
 
