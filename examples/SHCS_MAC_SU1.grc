@@ -432,7 +432,7 @@
     </param>
     <param>
       <key>port</key>
-      <value>52002</value>
+      <value>52001</value>
     </param>
     <param>
       <key>tcp_no_delay</key>
