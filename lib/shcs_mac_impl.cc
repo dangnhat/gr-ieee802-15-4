@@ -83,7 +83,7 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
         assoc_suc_id), d_fft_len (fft_len)
 {
   /* Print hello message and time stamp */
-  cout << "Hello, this is SHCS MAC protocol implementation, version 0.3"
+  cout << "Hello, this is MSHCS-MAC protocol implementation, version 1.0"
       << endl;
   if (nwk_dev_type == SUC) {
     cout << "NWK device type: SU Coordinator" << endl;
@@ -103,7 +103,12 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
     throw std::invalid_argument ("MAC address has to consist of two integers");
   d_mac_addr[0] = mac_addr[0];
   d_mac_addr[1] = mac_addr[1];
-  cout << "MAC address: " << int (d_mac_addr[0]) << "." << int (d_mac_addr[1]);
+  cout << "MAC address: " << int (d_mac_addr[0]) << "." << int (d_mac_addr[1])
+      << endl;
+  cout << "Ts (ms): " << Ts << endl;
+  cout << "Tss (ms): " << Tss << endl;
+  cout << "Tb (ms): " << Tb << endl;
+  cout << "Tr (ms): " << Tr << endl;
 
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));
