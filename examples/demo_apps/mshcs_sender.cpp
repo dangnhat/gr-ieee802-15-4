@@ -31,7 +31,7 @@ using namespace boost::chrono;
 #define BUFLEN 512  //Max length of buffer
 #define PORT 52001   //The port on which to send data
 
-const int wait_time_range[2] = { 2, 10 };
+const int wait_time_range[2] = { 0, 3 };
 
 int socket_fd;
 bool debug;
