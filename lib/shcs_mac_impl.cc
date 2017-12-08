@@ -860,7 +860,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
         dout << "Next time slot start: " << time_slot_start << endl;
-        cout << "SUR/SU: connected to 0x" << hex << d_assoc_suc_id << endl;
+        cout << "\nSUR/SU: connected to 0x" << hex << d_assoc_suc_id << endl;
 
         /* Wake up control thread */
         control_thread_ptr->interrupt ();
