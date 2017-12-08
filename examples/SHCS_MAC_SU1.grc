@@ -825,11 +825,11 @@
     </param>
     <param>
       <key>nwk_dev_type</key>
-      <value>0</value>
+      <value>2</value>
     </param>
     <param>
       <key>suc_id</key>
-      <value>101</value>
+      <value>4</value>
     </param>
   </block>
   <block>
