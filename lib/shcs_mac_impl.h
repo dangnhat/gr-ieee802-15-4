@@ -147,6 +147,9 @@ namespace gr
       static const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
       // if needed.
 
+      /* extended operation */
+      static const bool csma_with_ack = false;
+
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
       const uint8_t d_broadcast_addr[2] = { 0xFF, 0xFF };

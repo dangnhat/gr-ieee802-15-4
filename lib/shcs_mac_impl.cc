@@ -410,6 +410,10 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
                               bool suc_wait_for_sur, const uint8_t *buf,
                               int len)
 {
+  if (!csma_with_ack) {
+    return csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf, len);
+  }
+
   uint8_t seqno, backup_buf[256];
 //  uint8_t dest_addr[8];
 //  le_uint16_t dest_panid;
