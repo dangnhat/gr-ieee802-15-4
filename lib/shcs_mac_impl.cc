@@ -430,7 +430,8 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
 
     /* Send data */
     dout << "RSend: Send #" << int (seqno) << " try " << count << endl;
-    csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf, len);
+//    csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf, len);
+    csma_ca_send (transmit_state, false, suc_wait_for_sur, buf, len); /* Test maximum throughput */
 
     /* Wait for ACK */
     gr::thread::scoped_lock lock (d_ack_m[transmit_thread_id]);
@@ -1393,7 +1394,7 @@ shcs_mac_impl::reporting_thread_func (void)
   while (1) {
     d_num_bytes_received = 0;
 
-    /* Sleep for 5s  */
+    /* Sleep for 10s  */
     boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
 
     /* Reporting */

@@ -214,7 +214,7 @@ public:
     while (1) {
       d_num_bytes_received = 0;
 
-      /* Sleep for 5s  */
+      /* Sleep for 10s  */
       boost::this_thread::sleep_for (boost::chrono::seconds (10));
 
       /* Reporting */
