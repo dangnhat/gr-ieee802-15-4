@@ -138,7 +138,7 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      static const uint32_t Ts = 500; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint16_t Th = 5; // ms, channel hopping duration.
       uint16_t Tss = 10; // ms, sensing duration.
@@ -213,7 +213,7 @@ namespace gr
 
       /* CSMA-CA rsend */
       static const int max_retries = 3;
-      static const int max_retry_timeout = 2*Ts; /* ms */
+      static const int max_retry_timeout = 2 * Ts; /* ms */
       gr::thread::condition_variable d_ack_received_cv[max_transmit_threads];
       gr::thread::mutex d_ack_m[max_transmit_threads];
       bool d_is_ack_received[max_transmit_threads] = { false, false };
@@ -236,6 +236,12 @@ namespace gr
       const int d_reporting_period = 10; /* s */
       uint64_t d_num_bytes_received = 0;
       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
+
+      /* Time synchronization - TPSN */
+      const char ref_point_c[64] = "1970-01-01 00:00:00.000";
+      boost::posix_time::ptime ref_point_ptime;
+      int64_t t1, offset, delay; /* in us */
+      uint8_t d_tpsn_waiting_seqno = 0;
 
       /**
        * @brief   Control thread for Coordinator.
@@ -516,16 +522,47 @@ namespace gr
       reporting_thread_func (void);
 
       /**
+       * @brief   Generate and send TPSN request frame. Client side.
+       *
+       * @param[in]   dest_addr, destination address (2 bytes).
+       *
+       * Used private vars:
+       * - d_seq_nr
+       * - ref_point_ptime
+       * - t1
+       */
+      void
+      generate_tpsn_req (const uint8_t *dest_addr);
+
+      /**
+       * @brief   Generate and send TPSN ack frame. Sever side.
+       *
+       * @param[in]   dest_addr, destination address (2 bytes).
+       * @param[in]   received_timestamp, received timestamp (t2).
+       *
+       * Used private vars:
+       * - d_seq_nr
+       * - ref_point_ptime
+       */
+      void
+      generate_tpsn_ack (const uint8_t *dest_addr, int seqno,
+                         boost::posix_time::ptime &received_timestamp);
+
+      /**
        * @brief    Buffer related functions.
        */
       uint16_t
       buffer_to_uint16 (uint8_t* buffer); // LSByte first
       uint32_t
       buffer_to_uint32 (uint8_t* buffer); // LSByte first
+      uint64_t
+      buffer_to_uint64 (uint8_t* buffer); // LSByte first
       void
       uint16_to_buffer (uint16_t data, uint8_t* buffer); // LSByte fisrt
       void
       uint32_to_buffer (uint32_t data, uint8_t* buffer); // LSByte fisrt
+      void
+      uint64_to_buffer (uint64_t data, uint8_t* buffer); // LSByte fisrt
       float
       buffer_to_float (uint8_t* buffer); // dec-2byte, frac-2byte (2 digits)
       void

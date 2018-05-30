@@ -110,6 +110,10 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   cout << "Tb (ms): " << Tb << endl;
   cout << "Tr (ms): " << Tr << endl;
 
+  /* Time sync */
+  ref_point_ptime = boost::posix_time::time_from_string (ref_point_c);
+  cout << "Reference point: " << ref_point_ptime << endl;
+
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));
   set_msg_handler (pmt::mp ("app in"),
@@ -411,7 +415,8 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
                               int len)
 {
   if (!csma_with_ack) {
-    return csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf, len);
+    return csma_ca_send (transmit_state, wait_for_beacon, suc_wait_for_sur, buf,
+                         len);
   }
 
   uint8_t seqno, backup_buf[256];
@@ -577,6 +582,10 @@ shcs_mac_impl::data_duration (void)
     if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_PARENT_NWK)) {
       d_control_thread_state = DATA_TRANSMISSION_PARENT;
       dout << "Channel is available: DATA_TRANSMISSION_PARENT state, " << endl;
+
+      /* TPSN test */
+      /* Request TPSN ack */
+      generate_tpsn_req ((uint8_t*) &d_assoc_suc_id);
     }
     else {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
@@ -759,7 +768,6 @@ shcs_mac_impl::sur_control_thread (void)
 
   /* Start tasks_processor */
   tasks_processor::get ().start ();
-
 }
 
 /*------------------------------------------------------------------------*/
@@ -768,12 +776,21 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 {
   pmt::pmt_t blob;
   uint8_t* frame_p = NULL;
+  size_t frame_len = 0;
   size_t data_index = 0;
 
-  boost::posix_time::ptime time_slot_start_tmp;
+  boost::posix_time::ptime received_timestamp, time_slot_start_tmp;
   uint8_t control_byte_tmp;
   uint16_t suc_id_tmp, Tss_tmp;
   uint32_t rand_seed_tmp;
+
+  /* Take timestamp */
+  received_timestamp = boost::posix_time::microsec_clock::universal_time ();
+  time_slot_start_tmp = received_timestamp
+      + boost::posix_time::milliseconds (Ts)
+      - boost::posix_time::milliseconds (Tss)
+      - boost::posix_time::milliseconds (Th)
+      - boost::posix_time::milliseconds (Tb / 2);
 
   if (pmt::is_pair (msg)) {
     blob = pmt::cdr (msg);
@@ -782,14 +799,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     assert(false);
   }
 
-  /* Take timestamp */
-  time_slot_start_tmp = boost::posix_time::microsec_clock::universal_time ()
-      + boost::posix_time::milliseconds (Ts)
-      - boost::posix_time::milliseconds (Tss)
-      - boost::posix_time::milliseconds (Th)
-      - boost::posix_time::milliseconds (Tb / 2);
-
-  size_t frame_len = pmt::blob_length (blob);
+  frame_len = pmt::blob_length (blob);
   if (frame_len < 11) {
     dout << "MAC: frame too short. Dropping!" << endl;
     return;
@@ -806,10 +816,10 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   dout << "MAC: correct crc, new packet!" << endl;
   d_num_bytes_received += frame_len;
 
-  /* Beacon packet */
+  /* New packet */
   frame_p = (uint8_t*) pmt::blob_data (blob);
 
-  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_BEACON) {
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK) == IEEE802154_FCF_TYPE_BEACON) {
     /* Beacon found */
     dout << "MAC: Found a beacon." << endl;
 
@@ -865,7 +875,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         dout << "Received Tss: " << Tss << endl;
         dout << "Received random seed: " << current_rand_seed << endl;
         dout << "Next time slot start: " << time_slot_start << endl;
-        cout << "\nSUR/SU: connected to 0x" << hex << d_assoc_suc_id << endl;
+        cout << "\nSUR/SU: connected to 0x" << hex << d_assoc_suc_id << dec
+            << endl;
 
         /* Wake up control thread */
         control_thread_ptr->interrupt ();
@@ -923,7 +934,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   }
 
   /* ACK */
-  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_ACK) {
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK) == IEEE802154_FCF_TYPE_ACK) {
     /* ACK, check seqno */
     uint8_t recv_seqno = ieee802154_get_seq (frame_p);
 
@@ -942,7 +953,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   }
 
   /* DATA */
-  if ((frame_p[0] & 0x03) == IEEE802154_FCF_TYPE_DATA) {
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK) == IEEE802154_FCF_TYPE_DATA) {
     uint8_t recv_src_addr[8], recv_seqno;
     le_uint16_t recv_src_pan;
     uint8_t ack_frame_buf[IEEE802154_MAX_HDR_LEN];
@@ -950,7 +961,6 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
     recv_seqno = ieee802154_get_seq (frame_p);
 
-    /* DATA */
     /* Check duplicate frame */
     if (!d_is_first_recv_data_frame) {
       if (recv_seqno == d_last_recv_seqno) {
@@ -1005,6 +1015,56 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
     message_port_pub (pmt::mp ("app out"),
                       pmt::cons (pmt::PMT_NIL, mac_payload));
+
+    return;
+  }
+
+  /* TPSN REQ */
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK) == IEEE802154_FCF_TYPE_TPSN_REQ) {
+    uint8_t recv_src_addr[8], recv_seqno;
+    le_uint16_t recv_src_pan;
+
+    dout << "MAC: received TPSN REQ" << endl;
+
+    /* Get seqno */
+    recv_seqno = ieee802154_get_seq (frame_p);
+
+    /* Get src address */
+    ieee802154_get_src (frame_p, recv_src_addr, &recv_src_pan);
+
+    generate_tpsn_ack (recv_src_addr, recv_seqno, received_timestamp);
+
+    /* print message */
+//    print_message(tpsn_ack_frame_p, tpsn_ack_frame_len);
+    return;
+  }
+
+  /* TPSN ACK */
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK) == IEEE802154_FCF_TYPE_TPSN_ACK) {
+    /* Check seqno */
+    if (d_tpsn_waiting_seqno != ieee802154_get_seq (frame_p)) {
+      /* Duplicated TPSN ACK */
+      dout << "MAC: duplicated TPSN ACK, dropped!" << endl;
+      return;
+    }
+
+    /* print message */
+//    print_message(frame_p, frame_len);
+    /* Handle TPSN ACK */
+    int64_t t2, t3, t4;
+    size_t fcs_len = ieee802154_get_frame_hdr_len (frame_p);
+
+    t2 = buffer_to_uint64 (&frame_p[fcs_len]);
+    t3 = buffer_to_uint64 (&frame_p[fcs_len + 8]);
+    t4 = (received_timestamp - ref_point_ptime).total_microseconds ();
+
+    offset = ((t2 - t1) - (t4 - t3)) / 2;
+    delay = ((t2 - t1) + (t4 - t3)) / 2;
+
+    dout << "MAC: TPSN\n" << "t1: " << t1 << "\n" << "t2: " << t2 << "\n"
+        << "t3: " << t3 << "\n" << "t4: " << t4 << "\n" << "offset: " << offset
+        << "\n" << "delay: " << delay << "\n";
+    cout << offset << ", " << delay << endl;
 
     return;
   }
@@ -1317,6 +1377,107 @@ shcs_mac_impl::generate_data_frame (const uint8_t *dest_addr, const bool ext_op,
 
 /*------------------------------------------------------------------------*/
 void
+shcs_mac_impl::generate_tpsn_req (const uint8_t *dest_addr)
+{
+  uint8_t obuf[IEEE802154_MAX_HDR_LEN + 2];
+  int olen;
+  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+  uint8_t flags = IEEE802154_FCF_TYPE_TPSN_REQ;
+  le_uint16_t pan_id_le;
+
+  if (d_nwk_dev_type == SUC) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
+  }
+  else if (d_nwk_dev_type == SU) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_assoc_suc_id));
+  }
+
+  d_tpsn_waiting_seqno = d_seq_nr;
+
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
+                                        pan_id_le, pan_id_le, flags, d_seq_nr++))
+      == 0) {
+    dout << "MAC: header error." << endl;
+  }
+  else {
+    /* Copy header to MAC frame */
+    memcpy (obuf, mhr, olen);
+
+    /* Calculate FCS */
+    uint16_t fcs = crc16 (obuf, olen);
+
+    /* Add FCS to frame */
+    obuf[olen++] = (uint8_t) fcs;
+    obuf[olen++] = (uint8_t) (fcs >> 8);
+  }
+
+  /* take timestamp */
+  boost::posix_time::time_duration t1_td;
+  t1_td = boost::posix_time::microsec_clock::universal_time ()
+      - ref_point_ptime;
+  t1 = t1_td.total_microseconds ();
+
+  phy_transmit (obuf, olen);
+
+  dout << "MAC: sent TPSN req to " << hex << d_assoc_suc_id << dec << ", t1: "
+      << t1 << endl;
+}
+
+/*------------------------------------------------------------------------*/
+void
+shcs_mac_impl::generate_tpsn_ack (const uint8_t *dest_addr, int seqno,
+                                  boost::posix_time::ptime &received_timestamp)
+{
+  uint8_t obuf[IEEE802154_MAX_HDR_LEN + 16];
+  int olen;
+  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+  uint8_t flags = IEEE802154_FCF_TYPE_TPSN_ACK;
+  le_uint16_t pan_id_le;
+
+  if (d_nwk_dev_type == SUC) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
+  }
+  else if (d_nwk_dev_type == SU) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_assoc_suc_id));
+  }
+
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
+                                        pan_id_le, pan_id_le, flags, seqno))
+      == 0) {
+    dout << "MAC: header error." << endl;
+  }
+  else {
+    /* Copy header to MAC frame */
+    memcpy (obuf, mhr, olen);
+
+    /* Prepare the data payload */
+    boost::posix_time::time_duration t2_td, t3_td;
+    t2_td = received_timestamp - ref_point_ptime;
+    t3_td = boost::posix_time::microsec_clock::universal_time ()
+        - ref_point_ptime;
+
+    uint64_to_buffer ((uint64_t) t2_td.total_microseconds (), &obuf[olen]);
+    olen += 8;
+    uint64_to_buffer ((uint64_t) t3_td.total_microseconds (), &obuf[olen]);
+    olen += 8;
+
+    /* Calculate FCS */
+    uint16_t fcs = crc16 (obuf, olen);
+
+    /* Add FCS to frame */
+    obuf[olen++] = (uint8_t) fcs;
+    obuf[olen++] = (uint8_t) (fcs >> 8);
+
+    /* Transmit */
+    phy_transmit (obuf, olen);
+
+    dout << "MAC: TPSN ACK" << "\n" << " t2: " << t2_td.total_microseconds ()
+        << "\n" << " t3: " << t3_td.total_microseconds () << "\n";
+  }
+}
+
+/*------------------------------------------------------------------------*/
+void
 shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
                                    uint8_t *obuf, int &olen)
 {
@@ -1430,6 +1591,19 @@ shcs_mac_impl::buffer_to_uint32 (uint8_t * buffer)
 }
 
 /*----------------------------------------------------------------------------*/
+uint64_t
+shcs_mac_impl::buffer_to_uint64 (uint8_t * buffer)
+{
+  uint64_t ret_val = 0;
+
+  for (int count = 0; count < 8; count++) {
+    ret_val |= (uint64_t) *(buffer + count) << ((7 - count) * 8);
+  }
+
+  return ret_val;
+}
+
+/*----------------------------------------------------------------------------*/
 void
 shcs_mac_impl::uint16_to_buffer (uint16_t data, uint8_t* buffer)
 {
@@ -1442,6 +1616,20 @@ void
 shcs_mac_impl::uint32_to_buffer (uint32_t data, uint8_t* buffer)
 {
   *buffer = (uint8_t) (data >> 24);
+  *(++buffer) = (uint8_t) (data >> 16);
+  *(++buffer) = (uint8_t) (data >> 8);
+  *(++buffer) = (uint8_t) (data);
+}
+
+/*----------------------------------------------------------------------------*/
+void
+shcs_mac_impl::uint64_to_buffer (uint64_t data, uint8_t* buffer)
+{
+  *buffer = (uint8_t) (data >> 56);
+  *(++buffer) = (uint8_t) (data >> 48);
+  *(++buffer) = (uint8_t) (data >> 40);
+  *(++buffer) = (uint8_t) (data >> 32);
+  *(++buffer) = (uint8_t) (data >> 24);
   *(++buffer) = (uint8_t) (data >> 16);
   *(++buffer) = (uint8_t) (data >> 8);
   *(++buffer) = (uint8_t) (data);
