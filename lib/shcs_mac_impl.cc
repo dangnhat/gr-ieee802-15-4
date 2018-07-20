@@ -20,11 +20,10 @@
 
 /**
  * @file shcs_mac_impl.cpp
- * @author  Nhat Pham <nhatphd@kaist.ac.kr>, Real-time and Embedded Systems Lab
+ * @author Nhat Pham <nhatphd@kaist.ac.kr>, Real-time and Embedded Systems Lab
  * @version 1.0
- * @date 2017-03-13
- * @brief This is the implementation for SHCS MAC protocol.
- *
+ * @date 2018-07-28
+ * @brief This is the implementation for MSHCS MAC protocol.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -44,6 +43,9 @@
 #include "shcs_ieee802154.h"
 #include "shcs_tasks_processor_base.hpp"
 #include "shcs_tasks_processor_timers.hpp"
+
+#include <gnuradio/block_registry.h>
+#include <boost/pointer_cast.hpp>
 
 using namespace gr::ieee802_15_4;
 using namespace tp_timers;
@@ -113,6 +115,17 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   /* Time sync */
   ref_point_ptime = boost::posix_time::time_from_string (ref_point_c);
   cout << "Reference point: " << ref_point_ptime << endl;
+
+  /* RBS */
+  delay_acc_ptr = boost::shared_ptr<MeanAccumulator> (
+      new MeanAccumulator (bt::rolling_window::window_size = window_size));
+
+  /* USRP GPIO */
+  usrp_gpio_init ();
+  usrp_gpio_off (0);
+  usrp_gpio_off (1);
+  usrp_gpio_off (2);
+  usrp_gpio_off (3);
 
   /* Register message port from NWK Layer */
   message_port_register_in (pmt::mp ("app in"));
@@ -233,9 +246,14 @@ shcs_mac_impl::channel_hopping (void)
 {
   uint32_t seed_tmp;
   boost::posix_time::ptime time;
+
   time = boost::posix_time::microsec_clock::universal_time ();
   dout << endl;
   dout << time << ": Channel hopping" << endl;
+
+  /* Toogle pin 0, 1 */
+  usrp_gpio_toggle (0);
+  usrp_gpio_toggle (1);
 
   current_rand_seed = rng ();
   seed_tmp = current_rand_seed;
@@ -362,16 +380,18 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
   int backoff_time, backoff_time_max;
 
   while (1) {
-    /* Wait until transmit state */
-    gr::thread::scoped_lock lock (d_tx_mutex);
-    while (d_control_thread_state != transmit_state
-        || (wait_for_beacon && !is_beacon_received && !d_ext_op_sender
-            && d_ext_op_recv_wait_time_left <= 0)
-        || (suc_wait_for_sur && d_assoc_current_sur_state != IN_PARENT_NWK
-            && !d_ext_op_sender && d_ext_op_recv_wait_time_left <= 0)) {
-      d_tx_condvar.wait (lock);
+    if (transmit_state != NULL_STATE) {
+      /* Wait until transmit state */
+      gr::thread::scoped_lock lock (d_tx_mutex);
+      while (d_control_thread_state != transmit_state
+          || (wait_for_beacon && !is_beacon_received && !d_ext_op_sender
+              && d_ext_op_recv_wait_time_left <= 0)
+          || (suc_wait_for_sur && d_assoc_current_sur_state != IN_PARENT_NWK
+              && !d_ext_op_sender && d_ext_op_recv_wait_time_left <= 0)) {
+        d_tx_condvar.wait (lock);
+      }
+      lock.unlock ();
     }
-    lock.unlock ();
 
     /* Calculate backoff time */
     backoff_time_max = (int) (pow (2, backoff_exp) - 1);
@@ -384,7 +404,8 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
       boost::this_thread::sleep_for (
           boost::chrono::milliseconds { backoff_time });
 
-      if (d_control_thread_state != transmit_state) {
+      if ((d_control_thread_state != transmit_state)
+          && (transmit_state != NULL_STATE)) {
         /* Cancel current backoff and do it again in next time slot */
         continue;
       }
@@ -462,6 +483,7 @@ shcs_mac_impl::beacon_duration (void)
 {
   boost::posix_time::ptime time;
   time = boost::posix_time::microsec_clock::universal_time ();
+  rbs_last_beacon_send_timestamp = time;
   dout << time << ": Beacon duration" << endl;
   uint8_t buf[256];
   int len;
@@ -556,7 +578,7 @@ shcs_mac_impl::beacon_duration (void)
 void
 shcs_mac_impl::reporting_duration (void)
 {
-  //TODO: no need for now.
+//TODO: no need for now.
 
   boost::posix_time::ptime time;
   time = boost::posix_time::microsec_clock::universal_time ();
@@ -576,6 +598,12 @@ shcs_mac_impl::data_duration (void)
   dout << time << ": Data Duration" << endl;
 
   if ((is_channel_available) && (!is_busy_signal_received)) {
+    /* RBS: Send timestamps packet */
+    if (rbs_send_timestamps_packet) {
+      generate_rbs_timestamps_packet (rbs_last_beacon_send_timestamp,
+                                      rbs_last_beacon_rcv_timestamp);
+    }
+    rbs_send_timestamps_packet = false;
 
     /* Wake transmit_thread up */
     gr::thread::scoped_lock lock (d_tx_mutex);
@@ -583,9 +611,9 @@ shcs_mac_impl::data_duration (void)
       d_control_thread_state = DATA_TRANSMISSION_PARENT;
       dout << "Channel is available: DATA_TRANSMISSION_PARENT state, " << endl;
 
-      /* TPSN test */
-      /* Request TPSN ack */
-      generate_tpsn_req ((uint8_t*) &d_assoc_suc_id);
+//      /* TPSN test */
+//      /* Request TPSN ack */
+//      generate_tpsn_req ((uint8_t*) &d_assoc_suc_id);
     }
     else {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
@@ -784,13 +812,21 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   uint16_t suc_id_tmp, Tss_tmp;
   uint32_t rand_seed_tmp;
 
+  uint16_t recv_suc_id;
+
   /* Take timestamp */
   received_timestamp = boost::posix_time::microsec_clock::universal_time ();
+
+//  time_slot_start_tmp = received_timestamp
+//      + boost::posix_time::milliseconds (Ts)
+//      - boost::posix_time::milliseconds (Tss)
+//      - boost::posix_time::milliseconds (Th)
+//      - boost::posix_time::milliseconds (Tb / 2); // old calculation
+
+  int64_t time_until_next_ts = static_cast<int64_t> (static_cast<double> ((Tr
+      + Tdata + Tb / 2) * 1000 - avg_delay) * modifier);
   time_slot_start_tmp = received_timestamp
-      + boost::posix_time::milliseconds (Ts)
-      - boost::posix_time::milliseconds (Tss)
-      - boost::posix_time::milliseconds (Th)
-      - boost::posix_time::milliseconds (Tb / 2);
+      + boost::posix_time::microseconds (time_until_next_ts);
 
   if (pmt::is_pair (msg)) {
     blob = pmt::cdr (msg);
@@ -823,6 +859,20 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     /* Beacon found */
     dout << "MAC: Found a beacon." << endl;
 
+    /* RBS testing */
+//    uint8_t recv_seqno = ieee802154_get_seq (frame_p);
+//
+//    if (recv_seqno != d_last_recv_seqno_rbs+1) {
+//      d_last_recv_seqno_rbs++;
+//      while (d_last_recv_seqno_rbs != recv_seqno) {
+//        cout << (int) d_last_recv_seqno_rbs << endl;
+//        d_last_recv_seqno_rbs++;
+//      }
+//    }
+//
+//    cout << (int) recv_seqno << ", "
+//        << (received_timestamp - ref_point_ptime).total_microseconds () << endl;
+//    d_last_recv_seqno_rbs = recv_seqno;
     switch (d_control_thread_state) {
       case SU_BOOTSTRAPPING:
         /* Store SUC_ID, sensing time, current random seed, time frame start time */
@@ -848,9 +898,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
           return;
         }
 
-        /* update suc id, sensing time, random seed, and time slot start */
+        /* update suc id, random seed, and time slot start */
         d_assoc_suc_id = suc_id_tmp;
-        Tss = Tss_tmp;
         time_slot_start = time_slot_start_tmp;
         current_rand_seed = rand_seed_tmp;
         rng.seed (current_rand_seed);
@@ -884,22 +933,36 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         break;
 
       case BEACON:
+        /* Get SUC ID */
+        data_index = ieee802154_get_frame_hdr_len (frame_p);
+
+        /* Skip superframe, GTS, pending address and control_byte fields */
+        data_index += 5;
+
+        recv_suc_id = buffer_to_uint16 (&frame_p[data_index]);
+
+        /* RBS: save last beacon time stamp */
+        rbs_last_beacon_rcv_timestamp = received_timestamp;
+
         if (d_nwk_dev_type == SU
             || (d_nwk_dev_type == SUR && d_sur_state == IN_PARENT_NWK)) {
-          /* Check SUC ID */
-          data_index = ieee802154_get_frame_hdr_len (frame_p);
-
-          /* Skip superframe, GTS, pending address and control_byte fields */
-          data_index += 5;
-
-          uint16_t recv_suc_id = buffer_to_uint16 (&frame_p[data_index]);
 
           if (d_assoc_suc_id == recv_suc_id) {
+            /* Update the starting time of next timeslot */
             time_slot_start = time_slot_start_tmp;
             is_beacon_received = true;
 
             dout << "MAC: Beacon state. => is_beacon_received = true." << endl;
             dout << "Updated time_slot_start: " << time_slot_start << endl;
+          }
+        }
+        else if (d_nwk_dev_type == SUC
+            || (d_nwk_dev_type == SUR && d_sur_state == IN_LOCAL_NWK)) {
+          /* RBS: check whether we receive our own beacon or not */
+          if (d_suc_id == recv_suc_id) {
+            /* RBS: my beacon, signal to send RBS timestamp packet */
+            dout << "MAC: received my own beacon." << endl;
+            rbs_send_timestamps_packet = true;
           }
         }
 
@@ -909,6 +972,53 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         dout << "MAC: Drop beacon!" << endl;
 
         break;
+    }
+
+    return;
+  }
+
+  if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK)
+      == IEEE802154_FCF_TYPE_RBS_TIMESTAMPS) {
+    /* RBS timestamps */
+    dout << "MAC: RBS timestamps received." << endl;
+
+    if (d_nwk_dev_type == SU
+        || (d_nwk_dev_type == SUR && d_sur_state == IN_PARENT_NWK)) {
+      /* Check whether a beacon has been received in the last beacon duration */
+      if (!is_beacon_received) {
+        dout << "MAC: Didn't receive beacon, drop rbs timestamps." << endl;
+        return;
+      }
+
+      /* Get SUC ID */
+      data_index = ieee802154_get_frame_hdr_len (frame_p);
+      recv_suc_id = buffer_to_uint16 (&frame_p[data_index]);
+      data_index += 2;
+
+      if (d_assoc_suc_id == recv_suc_id) {
+        /* Get timestamps */
+        int64_t ref_beacon_rcv_time = (int64_t) buffer_to_uint64 (
+            &frame_p[data_index]);
+        data_index += 8;
+        int64_t ref_delay = (int64_t) buffer_to_uint64 (&frame_p[data_index]);
+        data_index += 8;
+
+        dout << "MAC: SUC ID: " << recv_suc_id << ", ref_rcv_time: "
+            << ref_beacon_rcv_time << ", ref_delay: " << ref_delay << endl;
+
+        /* Calculate avg_delay */
+        (*delay_acc_ptr) (ref_delay);
+        avg_delay = (int64_t) ba::rolling_mean (*delay_acc_ptr);
+        cout << "MAC: rolling delay: " << avg_delay << endl;
+      }
+      else {
+        dout << "MAC: recv_suc_id != d_assoc_suc_id: " << recv_suc_id << ", "
+            << d_assoc_suc_id << endl;
+      }
+    }
+    else {
+      dout << "MAC: SUC, or SUR in LOCAL_NWK, don't care RBS timestamps."
+          << endl;
     }
 
     return;
@@ -1377,6 +1487,41 @@ shcs_mac_impl::generate_data_frame (const uint8_t *dest_addr, const bool ext_op,
 
 /*------------------------------------------------------------------------*/
 void
+shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
+                                   uint8_t *obuf, int &olen)
+{
+  uint8_t mhr[IEEE802154_MAX_HDR_LEN];
+  uint8_t flags = IEEE802154_FCF_TYPE_ACK;
+  le_uint16_t pan_id_le;
+  if (d_nwk_dev_type == SUC) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
+  }
+  else if (d_nwk_dev_type == SU) {
+    pan_id_le = byteorder_btols (byteorder_htons (d_assoc_suc_id));
+  }
+
+  /* Peak to get src addr and dest addr */
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
+                                        pan_id_le, pan_id_le, flags, seqno))
+      == 0) {
+    dout << "MAC: header error." << endl;
+  }
+  else {
+    /* Copy header to MAC frame */
+    memcpy (obuf, mhr, olen);
+
+    /* Calculate FCS */
+    uint16_t fcs = crc16 (obuf, olen);
+
+    /* Add FCS to frame */
+    obuf[olen++] = (uint8_t) fcs;
+    obuf[olen++] = (uint8_t) (fcs >> 8);
+
+  }
+}
+
+/*------------------------------------------------------------------------*/
+void
 shcs_mac_impl::generate_tpsn_req (const uint8_t *dest_addr)
 {
   uint8_t obuf[IEEE802154_MAX_HDR_LEN + 2];
@@ -1478,12 +1623,17 @@ shcs_mac_impl::generate_tpsn_ack (const uint8_t *dest_addr, int seqno,
 
 /*------------------------------------------------------------------------*/
 void
-shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
-                                   uint8_t *obuf, int &olen)
+shcs_mac_impl::generate_rbs_timestamps_packet (
+    boost::posix_time::ptime &beacon_sent_timestamp,
+    boost::posix_time::ptime &beacon_received_timestamp)
 {
+  uint8_t obuf[255];
+  int olen;
   uint8_t mhr[IEEE802154_MAX_HDR_LEN];
-  uint8_t flags = IEEE802154_FCF_TYPE_ACK;
+  uint8_t flags = IEEE802154_FCF_TYPE_RBS_TIMESTAMPS
+      | IEEE802154_FCF_SRC_ADDR_SHORT | IEEE802154_FCF_SRC_ADDR_VOID;
   le_uint16_t pan_id_le;
+
   if (d_nwk_dev_type == SUC) {
     pan_id_le = byteorder_btols (byteorder_htons (d_suc_id));
   }
@@ -1491,15 +1641,28 @@ shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
     pan_id_le = byteorder_btols (byteorder_htons (d_assoc_suc_id));
   }
 
-  /* Peak to get src addr and dest addr */
-  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, dest_addr, 2,
-                                        pan_id_le, pan_id_le, flags, seqno))
+  if ((olen = ieee802154_set_frame_hdr (mhr, d_mac_addr, 2, d_broadcast_addr, 2,
+                                        pan_id_le, pan_id_le, flags, d_seq_nr++))
       == 0) {
     dout << "MAC: header error." << endl;
   }
   else {
     /* Copy header to MAC frame */
     memcpy (obuf, mhr, olen);
+
+    /* Prepare the data payload */
+    uint16_to_buffer (d_suc_id, &obuf[olen]);
+    olen += 2;
+
+    boost::posix_time::time_duration beacon_recv_td, delay_td;
+    beacon_recv_td = beacon_received_timestamp - ref_point_ptime;
+    delay_td = beacon_received_timestamp - beacon_sent_timestamp;
+
+    uint64_to_buffer ((uint64_t) beacon_recv_td.total_microseconds (),
+                      &obuf[olen]);
+    olen += 8;
+    uint64_to_buffer ((uint64_t) delay_td.total_microseconds (), &obuf[olen]);
+    olen += 8;
 
     /* Calculate FCS */
     uint16_t fcs = crc16 (obuf, olen);
@@ -1508,6 +1671,12 @@ shcs_mac_impl::generate_ack_frame (const uint8_t *dest_addr, int seqno,
     obuf[olen++] = (uint8_t) fcs;
     obuf[olen++] = (uint8_t) (fcs >> 8);
 
+    /* Transmit */
+    csma_ca_send (NULL_STATE, false, false, obuf, olen);
+
+    dout << "MAC: Sent RBS timestamps packet " << "\n" << " beacon_recv: "
+        << beacon_recv_td.total_microseconds () << "\n" << " delay: "
+        << delay_td.total_microseconds () << "\n";
   }
 }
 
@@ -1564,6 +1733,79 @@ shcs_mac_impl::reporting_thread_func (void)
         << std::endl;
 
     count++;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+void
+shcs_mac_impl::usrp_gpio_init (void)
+{
+  /* This is definitively not good code. Messange passing will be much cleaner.
+   * However, since message passing is not supported yet (July 20, 2018), this
+   * is the only choice to access GPIOs on USRP device */
+  basic_block_sptr blk;
+
+  // call print print self.uhd_usrp_source_0.alias() to get this alias.
+  const string usrp_alias = "gr uhd usrp source0";
+  try {
+    blk = global_block_registry.block_lookup (pmt::intern (usrp_alias));
+    d_usrp = boost::dynamic_pointer_cast<gr::uhd::usrp_source> (blk);
+  }
+  catch (const std::runtime_error& err) {
+    dout << "MAC: Unable to find USRP instance in block registry." << endl;
+    exit (0);
+  }
+
+  dout << "MAC: Found USRP" << endl;
+
+  // This is to find the name of GPIO banks
+//    std::vector<std::string> gpio_banks;
+//    gpio_banks = d_usrp->get_gpio_banks(0);
+//    dout << "MAC: GPIO banks:" << endl;
+//    for (string i : gpio_banks) {
+//      dout << i << endl;
+//    }
+
+  // set up our masks, defining the pin numbers
+  const uint32_t MAN_GPIO_MASK = 0x0F;
+  // set up our values for ATR control: 1 for ATR, 0 for manual
+  const uint32_t ATR_CONTROL = ~MAN_GPIO_MASK;
+  // set up the GPIO directions: 1 for output, 0 for input
+  const uint32_t GPIO_DDR = MAN_GPIO_MASK;
+
+  // now, let's do the basic ATR setup
+  d_usrp->set_gpio_attr ("FP0", "CTRL", ATR_CONTROL, MAN_GPIO_MASK);
+  d_usrp->set_gpio_attr ("FP0", "DDR", GPIO_DDR, MAN_GPIO_MASK);
+}
+
+/*----------------------------------------------------------------------------*/
+void
+shcs_mac_impl::usrp_gpio_on (int pin)
+{
+  uint32_t mask = 1 << pin;
+  d_usrp->set_gpio_attr ("FP0", "OUT", 1 << pin, mask);
+}
+
+/*----------------------------------------------------------------------------*/
+void
+shcs_mac_impl::usrp_gpio_off (int pin)
+{
+  uint32_t mask = 1 << pin;
+  d_usrp->set_gpio_attr ("FP0", "OUT", 0, mask);
+}
+
+/*----------------------------------------------------------------------------*/
+void
+shcs_mac_impl::usrp_gpio_toggle (int pin)
+{
+  uint32_t mask = 1 << pin;
+  uint32_t retval = d_usrp->get_gpio_attr ("FP0", "OUT");
+
+  if ((retval & mask) == 0) {
+    usrp_gpio_on (pin);
+  }
+  else {
+    usrp_gpio_off (pin);
   }
 }
 

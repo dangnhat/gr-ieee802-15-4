@@ -18,12 +18,31 @@
  * Boston, MA 02110-1301, USA.
  */
 
+/**
+ * @file shcs_mac_impl.h
+ * @author Nhat Pham <nhatphd@kaist.ac.kr>, Real-time and Embedded Systems Lab
+ * @version 1.0
+ * @date 2018-07-28
+ * @brief This is the implementation for MSHCS MAC protocol.
+ */
+
 #ifndef INCLUDED_IEEE802_15_4_SHCS_MAC_IMPL_H
 #define INCLUDED_IEEE802_15_4_SHCS_MAC_IMPL_H
 
 #include <ieee802_15_4/shcs_mac.h>
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/asio.hpp>
+//#include "cir_queue.h"
+
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/rolling_mean.hpp>
+
+#include <gnuradio/uhd/usrp_source.h>
+
+namespace ba = boost::accumulators;
+namespace bt = ba::tag;
+typedef ba::accumulator_set<int64_t, ba::stats<bt::rolling_mean> > MeanAccumulator;
 
 namespace gr
 {
@@ -140,15 +159,15 @@ namespace gr
 
       static const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
-      static const uint16_t Th = 5; // ms, channel hopping duration.
-      uint16_t Tss = 10; // ms, sensing duration.
-      static const uint16_t Tb = 10; // ms, beacon duration.
-      static const uint16_t Tr = 5; // ms, reporting duration.
-      static const uint16_t d_guard_time = 1; // ms, guard time at the end of each duration
-      // if needed.
+      static const uint32_t Th = 5; // ms, channel hopping duration.
+      static const uint32_t Tss = 10; // ms, sensing duration.
+      static const uint32_t d_guard_time = 1; // ms, guard time at the end of sensing duration.
+      static const uint32_t Tb = 10; // ms, beacon duration.
+      static const uint32_t Tr = 5; // ms, reporting duration.
+      static const uint32_t Tdata = Ts - Th - Tss - Tb - Tr;
 
       /* extended operation */
-      static const bool csma_with_ack = false;
+      static const bool csma_with_ack = true;
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
@@ -237,11 +256,31 @@ namespace gr
       uint64_t d_num_bytes_received = 0;
       boost::shared_ptr<gr::thread::thread> reporting_thread_ptr;
 
-      /* Time synchronization - TPSN */
+      /* Time synchronization */
       const char ref_point_c[64] = "1970-01-01 00:00:00.000";
       boost::posix_time::ptime ref_point_ptime;
-      int64_t t1, offset, delay; /* in us */
+
+      /* Modified version of RBS */
+      uint8_t d_last_recv_seqno_rbs = 0;
+      boost::posix_time::ptime rbs_last_beacon_send_timestamp;
+      boost::posix_time::ptime rbs_last_beacon_rcv_timestamp;
+      bool rbs_send_timestamps_packet = false; // signal to send timestamps in data duration.
+//      cir_queue
+//      t_locals (); // use the default queue with CQUEUE_DEFAULT_SIZE points
+//      cir_queue
+//      t_refs (); // use the default queue with CQUEUE_DEFAULT_SIZE points
+      const int window_size = 100;
+      boost::shared_ptr<MeanAccumulator> delay_acc_ptr;
+
+      double modifier = 1.0; // time in local clock / time in ref clock.
+      int64_t current_offset = 0, avg_delay = 0; // in us.
+
+      /* TPSN */
       uint8_t d_tpsn_waiting_seqno = 0;
+      int64_t t1, offset, delay; /* in us */
+
+      /* USRP GPIO */
+      gr::uhd::usrp_source::sptr d_usrp; // pointer to USRP object.
 
       /**
        * @brief   Control thread for Coordinator.
@@ -416,7 +455,7 @@ namespace gr
        * @param[in] wait_for_sur. true if SUC needs to wait for SUR to arrive
        *            before transmitting.
        * @param[in] transmit_state. It will wait until control thread is in
-       *            this state before sending.
+       *            this state before sending. NULL_STATE to skip it.
        *
        * @return    true when successful. False, otherwise.
        *
@@ -547,6 +586,43 @@ namespace gr
       void
       generate_tpsn_ack (const uint8_t *dest_addr, int seqno,
                          boost::posix_time::ptime &received_timestamp);
+
+      /**
+       * @brief   Generate and send RBS timestamps frame.
+       *
+       * @param[in]   beacon_sent_timestamp, sent beacon timestamp.
+       * @param[in]   beacon_received_timestamp, received beacon timestamp.
+       *
+       * Used private vars:
+       * - d_seq_nr
+       * - ref_point_ptime
+       */
+      void
+      generate_rbs_timestamps_packet (
+          boost::posix_time::ptime &beacon_sent_timestamp,
+          boost::posix_time::ptime &beacon_received_timestamp);
+
+      /**
+       * @brief   Init GPIO 0, 1, 2, 3 for manual control as output pins.
+       *
+       * Used private vars:
+       * - d_usrp
+       */
+      void
+      usrp_gpio_init (void);
+
+      /**
+       * @brief   Turn on, off, and toggle a gpio pin.
+       *
+       * Used private vars:
+       * - d_usrp
+       */
+      void
+      usrp_gpio_toggle (int pin);
+      void
+      usrp_gpio_on (int pin);
+      void
+      usrp_gpio_off (int pin);
 
       /**
        * @brief    Buffer related functions.

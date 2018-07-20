@@ -432,7 +432,7 @@
     </param>
     <param>
       <key>port</key>
-      <value>52001</value>
+      <value>52005</value>
     </param>
     <param>
       <key>tcp_no_delay</key>
@@ -773,7 +773,7 @@
     <key>ieee802_15_4_shcs_mac</key>
     <param>
       <key>assoc_suc_id</key>
-      <value>3</value>
+      <value>0</value>
     </param>
     <param>
       <key>alias</key>

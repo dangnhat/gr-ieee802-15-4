@@ -56,6 +56,7 @@ extern "C" {
 #define IEEE802154_FCF_TYPE_MACCMD          (0x03)
 #define IEEE802154_FCF_TYPE_TPSN_REQ        (0x04) /* TPSN headers */
 #define IEEE802154_FCF_TYPE_TPSN_ACK        (0x05)
+#define IEEE802154_FCF_TYPE_RBS_TIMESTAMPS  (0x06) /* RBS time stamps packet */
 
 #define IEEE802154_FCF_SECURITY_EN          (0x08)  /**< enable security */
 #define IEEE802154_FCF_FRAME_PEND           (0x10)  /**< follow-up frame is pending */

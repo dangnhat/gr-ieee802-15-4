@@ -51,6 +51,7 @@ list(APPEND ieee802_15_4_sources
     zeropadding_removal_b_impl.cc
     shcs_mac_impl.cc
     shcs_ieee802154.cc
+    cir_queue.cc
 )
 
 list(APPEND ieee802_15_4_libs
