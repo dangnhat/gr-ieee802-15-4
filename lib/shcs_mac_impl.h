@@ -32,14 +32,19 @@
 #include <ieee802_15_4/shcs_mac.h>
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/asio.hpp>
-//#include "cir_queue.h"
+#include <vector>
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
+#include <boost/circular_buffer.hpp>
 
+#include "linearregression.h"
+
+/* USRP GPIO */
 #include <gnuradio/uhd/usrp_source.h>
 
+/* RBS delay moving average */
 namespace ba = boost::accumulators;
 namespace bt = ba::tag;
 typedef ba::accumulator_set<int64_t, ba::stats<bt::rolling_mean> > MeanAccumulator;
@@ -161,10 +166,12 @@ namespace gr
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint32_t Th = 5; // ms, channel hopping duration.
       static const uint32_t Tss = 10; // ms, sensing duration.
-      static const uint32_t d_guard_time = 1; // ms, guard time at the end of sensing duration.
+      static const uint32_t d_guard_time = 3; // ms, guard time at the end of sensing duration.
       static const uint32_t Tb = 10; // ms, beacon duration.
       static const uint32_t Tr = 5; // ms, reporting duration.
       static const uint32_t Tdata = Ts - Th - Tss - Tb - Tr;
+
+      uint32_t Ts_counter = 0;
 
       /* extended operation */
       static const bool csma_with_ack = true;
@@ -261,19 +268,26 @@ namespace gr
       boost::posix_time::ptime ref_point_ptime;
 
       /* Modified version of RBS */
+      const int rbs_sync_period = 1000; //ms
       uint8_t d_last_recv_seqno_rbs = 0;
       boost::posix_time::ptime rbs_last_beacon_send_timestamp;
       boost::posix_time::ptime rbs_last_beacon_rcv_timestamp;
       bool rbs_send_timestamps_packet = false; // signal to send timestamps in data duration.
-//      cir_queue
-//      t_locals (); // use the default queue with CQUEUE_DEFAULT_SIZE points
-//      cir_queue
-//      t_refs (); // use the default queue with CQUEUE_DEFAULT_SIZE points
-      const int window_size = 100;
-      boost::shared_ptr<MeanAccumulator> delay_acc_ptr;
+      bool rbs_sync_period_flag = false;
+      /* RBS moving average delay calculation */
+      const int rbs_delay_window_size = 100;
+      boost::shared_ptr<MeanAccumulator> rbs_delay_acc_ptr;
+      /* RBS linear regression for offsets */
+      const int rbs_offset_max_samples = 10;
+      const int rbs_linear_regression_min_new_samples = 5;
+      uint32_t rbs_new_samples_counter = 0;
+      boost::shared_ptr<boost::circular_buffer<int64_t>> rbs_t_locals_ptr,
+          rbs_t_refs_ptr;
+      lin_reg rbs_linear_regess {1.0, 0.0};
+      int64_t rbs_t_local_ref = 0;
 
-      double modifier = 1.0; // time in local clock / time in ref clock.
-      int64_t current_offset = 0, avg_delay = 0; // in us.
+      double rbs_modifier = 1.0, rbs_current_offset = 0.0; // time in local clock / time in ref clock.
+      int64_t rbs_avg_delay = 0; // in us.
 
       /* TPSN */
       uint8_t d_tpsn_waiting_seqno = 0;
@@ -623,6 +637,11 @@ namespace gr
       usrp_gpio_on (int pin);
       void
       usrp_gpio_off (int pin);
+
+      /**
+       * @brief   Calculate linear regression slope.
+       */
+      double lr_slope(const std::vector<double>& x, const std::vector<double>& y);
 
       /**
        * @brief    Buffer related functions.

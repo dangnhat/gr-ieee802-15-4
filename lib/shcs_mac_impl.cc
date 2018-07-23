@@ -38,6 +38,10 @@
 #include <boost/random/linear_congruential.hpp>
 #include <iostream>
 #include <iomanip>
+#include <numeric>
+#include <string>
+#include <functional>
+#include <time.h>
 
 #include "shcs_mac_impl.h"
 #include "shcs_ieee802154.h"
@@ -117,8 +121,14 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   cout << "Reference point: " << ref_point_ptime << endl;
 
   /* RBS */
-  delay_acc_ptr = boost::shared_ptr<MeanAccumulator> (
-      new MeanAccumulator (bt::rolling_window::window_size = window_size));
+  rbs_delay_acc_ptr = boost::shared_ptr<MeanAccumulator> (
+      new MeanAccumulator (bt::rolling_window::window_size =
+          rbs_delay_window_size));
+
+  rbs_t_locals_ptr = boost::shared_ptr<boost::circular_buffer<int64_t>> (
+      new boost::circular_buffer<int64_t> (rbs_offset_max_samples));
+  rbs_t_refs_ptr = boost::shared_ptr<boost::circular_buffer<int64_t>> (
+      new boost::circular_buffer<int64_t> (rbs_offset_max_samples));
 
   /* USRP GPIO */
   usrp_gpio_init ();
@@ -196,9 +206,9 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   }
 
   /* Reporting thread */
-//  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-//      new gr::thread::thread (
-//          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
+  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+      new gr::thread::thread (
+          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
 }
 
 /*------------------------------------------------------------------------*/
@@ -251,9 +261,20 @@ shcs_mac_impl::channel_hopping (void)
   dout << endl;
   dout << time << ": Channel hopping" << endl;
 
-  /* Toogle pin 0, 1 */
-  usrp_gpio_toggle (0);
+  /* Toogle pin 1 */
   usrp_gpio_toggle (1);
+
+  /* Increase Ts_counter */
+  Ts_counter++;
+
+  /* RBS sync period */
+  if ((Ts_counter % (rbs_sync_period / Ts) == 0)
+      || (Ts_counter % (rbs_sync_period / Ts) == 1)) {
+    rbs_sync_period_flag = true;
+  }
+  else {
+    rbs_sync_period_flag = false;
+  }
 
   current_rand_seed = rng ();
   seed_tmp = current_rand_seed;
@@ -599,7 +620,7 @@ shcs_mac_impl::data_duration (void)
 
   if ((is_channel_available) && (!is_busy_signal_received)) {
     /* RBS: Send timestamps packet */
-    if (rbs_send_timestamps_packet) {
+    if (rbs_send_timestamps_packet && rbs_sync_period_flag) {
       generate_rbs_timestamps_packet (rbs_last_beacon_send_timestamp,
                                       rbs_last_beacon_rcv_timestamp);
     }
@@ -699,7 +720,7 @@ shcs_mac_impl::reload_tasks (void)
 
   /* Reload tasks at the end of a time slot */
   tasks_processor::get ().run_at (
-      time_slot_start + boost::posix_time::milliseconds (Ts),
+      time_slot_start + boost::posix_time::milliseconds (Ts - d_guard_time),
       boost::bind (&shcs_mac_impl::reload_tasks, this));
 
   /* Calculate next time_slot_start */
@@ -824,7 +845,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 //      - boost::posix_time::milliseconds (Tb / 2); // old calculation
 
   int64_t time_until_next_ts = static_cast<int64_t> (static_cast<double> ((Tr
-      + Tdata + Tb / 2) * 1000 - avg_delay) * modifier);
+      + Tdata + Tb / 2) * 1000 - rbs_avg_delay) * rbs_modifier);
   time_slot_start_tmp = received_timestamp
       + boost::posix_time::microseconds (time_until_next_ts);
 
@@ -1003,13 +1024,47 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         int64_t ref_delay = (int64_t) buffer_to_uint64 (&frame_p[data_index]);
         data_index += 8;
 
-        dout << "MAC: SUC ID: " << recv_suc_id << ", ref_rcv_time: "
-            << ref_beacon_rcv_time << ", ref_delay: " << ref_delay << endl;
+//        dout << "MAC: SUC ID: " << recv_suc_id << ", current_offset: "
+//            << (rbs_last_beacon_rcv_timestamp - ref_point_ptime).total_microseconds ()
+//                - ref_beacon_rcv_time << ", ref_delay: " << ref_delay << endl;
 
         /* Calculate avg_delay */
-        (*delay_acc_ptr) (ref_delay);
-        avg_delay = (int64_t) ba::rolling_mean (*delay_acc_ptr);
-        cout << "MAC: rolling delay: " << avg_delay << endl;
+        (*rbs_delay_acc_ptr) (ref_delay);
+        rbs_avg_delay = (int64_t) ba::rolling_mean (*rbs_delay_acc_ptr);
+        cout << "MAC: rolling delay: " << rbs_avg_delay << endl;
+
+        /* Save timestamps to ring buffers */
+        rbs_t_locals_ptr->push_back (
+            (rbs_last_beacon_rcv_timestamp - ref_point_ptime).total_microseconds ());
+        rbs_t_refs_ptr->push_back (ref_beacon_rcv_time);
+        cout << "MAC: push (local, ref): ("
+            << (rbs_last_beacon_rcv_timestamp - ref_point_ptime).total_microseconds ()
+            << ", " << ref_beacon_rcv_time << ") to buffers" << endl;
+        rbs_new_samples_counter++;
+
+        if (rbs_new_samples_counter >= rbs_linear_regression_min_new_samples) {
+          /* Do linear regression */
+          double t_locals_buf[rbs_offset_max_samples],
+              t_refs_buf[rbs_offset_max_samples];
+
+          rbs_t_local_ref = (*rbs_t_locals_ptr)[0];
+          for (int count = 0; count < rbs_t_locals_ptr->size (); count++) {
+            t_locals_buf[count] =
+                (static_cast<double> ((*rbs_t_locals_ptr)[count]
+                    - rbs_t_local_ref));
+            t_refs_buf[count] = (static_cast<double> ((*rbs_t_refs_ptr)[count]
+                - rbs_t_local_ref));
+          }
+
+          linear_regression (t_refs_buf, t_locals_buf,
+                             rbs_t_locals_ptr->size (), &rbs_linear_regess);
+
+          rbs_modifier = rbs_linear_regess.a;
+          rbs_current_offset = rbs_linear_regess.b;
+          dout << "MAC: LR function: Tlocal = " << rbs_linear_regess.a
+              << " * Tref + " << rbs_linear_regess.b << endl;
+          rbs_new_samples_counter = 0;
+        }
       }
       else {
         dout << "MAC: recv_suc_id != d_assoc_suc_id: " << recv_suc_id << ", "
@@ -1716,24 +1771,80 @@ shcs_mac_impl::get_packet_error_ratio ()
 }
 
 /*------------------------------------------------------------------------*/
+//void
+//shcs_mac_impl::reporting_thread_func (void)
+//{
+//  int count = 0;
+//
+//  while (1) {
+//    d_num_bytes_received = 0;
+//
+//    /* Sleep for 10s  */
+//    boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
+//
+//    /* Reporting */
+//    std::cout << "MAC: Reports #" << count << ", avg data rate: "
+//        << d_num_bytes_received * 8 / 1024 / d_reporting_period << " kbit/s"
+//        << std::endl;
+//
+//    count++;
+//  }
+//}
+/*------------------------------------------------------------------------*/
 void
 shcs_mac_impl::reporting_thread_func (void)
 {
-  int count = 0;
+  boost::posix_time::ptime cur_time, next_sec_ptime;
+  int64_t cur_time_us, cur_time_s;
+  static bool is_first_time = true;
 
-  while (1) {
-    d_num_bytes_received = 0;
+  cur_time = boost::posix_time::microsec_clock::universal_time ();
+  cur_time_us = (cur_time - ref_point_ptime).total_microseconds ();
+  /* Round to the nearest second */
+  cur_time_s = ((cur_time_us + 1000000/2) / 1000000);
 
-    /* Sleep for 10s  */
-    boost::this_thread::sleep_for (boost::chrono::seconds (d_reporting_period));
+  if (is_first_time) {
+    dout << "MAC: Reporting: skip first run!." << endl;
+    cur_time_s++;
+    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s);
+    is_first_time = false;
 
-    /* Reporting */
-    std::cout << "MAC: Reports #" << count << ", avg data rate: "
-        << d_num_bytes_received * 8 / 1024 / d_reporting_period << " kbit/s"
-        << std::endl;
-
-    count++;
+    tasks_processor::get ().run_at (
+        next_sec_ptime,
+        boost::bind (&shcs_mac_impl::reporting_thread_func, this));
+    return;
   }
+
+  /* Turn on LED on even seconds, off on odd seconds */
+  if (cur_time_s % 2 == 0) {
+    usrp_gpio_on (0);
+    dout << cur_time << ": GPIO 0 on." << endl;
+  }
+  else {
+    usrp_gpio_off (0);
+    dout << cur_time << ": GPIO 0 off." << endl;
+  }
+
+  /* Run at the next second */
+  if (d_nwk_dev_type == SUC) {
+    cur_time_s++;
+    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s);
+  }
+  else {
+    double next_sec_us_db;
+    int64_t next_sec_us;
+
+    next_sec_us_db = 1000000 * rbs_modifier + rbs_current_offset;
+    next_sec_us = static_cast<int64_t> (next_sec_us_db);
+    dout << next_sec_us << endl;
+
+    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s)
+        + boost::posix_time::microseconds (next_sec_us);
+  }
+
+  tasks_processor::get ().run_at (
+      next_sec_ptime,
+      boost::bind (&shcs_mac_impl::reporting_thread_func, this));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1745,7 +1856,7 @@ shcs_mac_impl::usrp_gpio_init (void)
    * is the only choice to access GPIOs on USRP device */
   basic_block_sptr blk;
 
-  // call print print self.uhd_usrp_source_0.alias() to get this alias.
+// call print print self.uhd_usrp_source_0.alias() to get this alias.
   const string usrp_alias = "gr uhd usrp source0";
   try {
     blk = global_block_registry.block_lookup (pmt::intern (usrp_alias));
@@ -1758,7 +1869,7 @@ shcs_mac_impl::usrp_gpio_init (void)
 
   dout << "MAC: Found USRP" << endl;
 
-  // This is to find the name of GPIO banks
+// This is to find the name of GPIO banks
 //    std::vector<std::string> gpio_banks;
 //    gpio_banks = d_usrp->get_gpio_banks(0);
 //    dout << "MAC: GPIO banks:" << endl;
@@ -1766,14 +1877,14 @@ shcs_mac_impl::usrp_gpio_init (void)
 //      dout << i << endl;
 //    }
 
-  // set up our masks, defining the pin numbers
+// set up our masks, defining the pin numbers
   const uint32_t MAN_GPIO_MASK = 0x0F;
-  // set up our values for ATR control: 1 for ATR, 0 for manual
+// set up our values for ATR control: 1 for ATR, 0 for manual
   const uint32_t ATR_CONTROL = ~MAN_GPIO_MASK;
-  // set up the GPIO directions: 1 for output, 0 for input
+// set up the GPIO directions: 1 for output, 0 for input
   const uint32_t GPIO_DDR = MAN_GPIO_MASK;
 
-  // now, let's do the basic ATR setup
+// now, let's do the basic ATR setup
   d_usrp->set_gpio_attr ("FP0", "CTRL", ATR_CONTROL, MAN_GPIO_MASK);
   d_usrp->set_gpio_attr ("FP0", "DDR", GPIO_DDR, MAN_GPIO_MASK);
 }
@@ -1807,6 +1918,47 @@ shcs_mac_impl::usrp_gpio_toggle (int pin)
   else {
     usrp_gpio_off (pin);
   }
+}
+
+/*----------------------------------------------------------------------------*/
+double
+shcs_mac_impl::lr_slope (const vector<double>& x, const vector<double>& y)
+{
+  if (x.size () != y.size ()) {
+    dout << "MAC: lr_slope: x.size != y.size, return 0";
+  }
+  double n = x.size ();
+
+  // Print x, y
+//  dout << "x: ";
+//  for (int i : x) {
+//    dout << i << ", ";
+//  }
+//  dout << endl;
+//
+//  dout << "y: ";
+//  for (int i : y) {
+//    dout << i << ", ";
+//  }
+//  dout << endl;
+
+  double avgX = accumulate (x.begin (), x.end (), 0.0) / n;
+  double avgY = accumulate (y.begin (), y.end (), 0.0) / n;
+
+  double numerator = 0.0;
+  double denominator = 0.0;
+
+  for (int i = 0; i < n; ++i) {
+    numerator += (x[i] - avgX) * (y[i] - avgY);
+    denominator += (x[i] - avgX) * (x[i] - avgX);
+  }
+
+  if (denominator == 0) {
+    dout << "MAC: lr_slope: denominator = 0, return 0";
+    return 0;
+  }
+
+  return numerator / denominator;
 }
 
 /*----------------------------------------------------------------------------*/
