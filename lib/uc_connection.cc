@@ -128,7 +128,7 @@ uc_connection::unpack (pmt::pmt_t msg)
 
   //this block is not the destination of the message
   if (dest[0] != d_rime_add_mine[0] || dest[1] != d_rime_add_mine[1]) {
-    dout << "#RIME: wrong rime add " << int (dest[0]) << "." << int (dest[1])
+    dout << "#RIME: not my RIME Addr " << int (dest[0]) << "." << int (dest[1])
         << endl;
 
     /* Forwarding */

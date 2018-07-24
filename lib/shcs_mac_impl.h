@@ -174,7 +174,7 @@ namespace gr
       uint32_t Ts_counter = 0;
 
       /* extended operation */
-      static const bool csma_with_ack = true;
+      static const bool csma_with_ack = false;
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
