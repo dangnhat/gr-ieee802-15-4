@@ -162,7 +162,7 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      static const uint32_t Ts = 300; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Ts = 500; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint32_t Th = 5; // ms, channel hopping duration.
       static const uint32_t Tss = 10; // ms, sensing duration.
@@ -174,7 +174,7 @@ namespace gr
       uint32_t Ts_counter = 0;
 
       /* csma_with_ack for reliable unicast */
-      static const bool csma_with_ack = false;
+      static const bool csma_with_ack = true;
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
