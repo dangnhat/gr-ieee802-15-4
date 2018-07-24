@@ -262,7 +262,7 @@ shcs_mac_impl::channel_hopping (void)
   dout << time << ": Channel hopping" << endl;
 
   /* Toogle pin 1 */
-  usrp_gpio_toggle (1);
+  //usrp_gpio_toggle (1);
 
   /* Increase Ts_counter */
   Ts_counter++;
@@ -348,12 +348,14 @@ shcs_mac_impl::spectrum_sensing (void)
   dout << "Avg power (dBm): " << avg_power_dBm << endl;
   dout << "Threshold (dBm): " << d_ss_threshold_dBm << endl;
 
-  if (avg_power_dBm < d_ss_threshold_dBm) {
-    is_channel_available = true;
-  }
-  else {
-    is_channel_available = false;
-  }
+//  if (avg_power_dBm < d_ss_threshold_dBm) {
+//    is_channel_available = true;
+//  }
+//  else {
+//    is_channel_available = false;
+//  }
+  /* For demo */
+  is_channel_available = true;
 
   is_spectrum_sensing_completed = true;
 }
