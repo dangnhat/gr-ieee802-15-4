@@ -1001,7 +1001,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK)
       == IEEE802154_FCF_TYPE_RBS_TIMESTAMPS) {
     /* RBS timestamps */
-    cout << "MAC: RBS timestamps received." << endl;
+    dout << "MAC: RBS timestamps received." << endl;
 
     if (d_nwk_dev_type == SU
         || (d_nwk_dev_type == SUR && d_sur_state == IN_PARENT_NWK)) {
