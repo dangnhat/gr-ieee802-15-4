@@ -26,7 +26,7 @@ namespace gr{
 		class IEEE802_15_4_API uc_connection : public rime_connection{
 		private:
 			static const int header_length = 6;
-			bool d_debug = false;
+			bool d_debug = true;
 
 		public:
 			static std::array<uint8_t, 256> make_msgbuf(uint16_t channel,

@@ -1001,7 +1001,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
   if ((frame_p[0] & IEEE802154_FCF_TYPE_MASK)
       == IEEE802154_FCF_TYPE_RBS_TIMESTAMPS) {
     /* RBS timestamps */
-    dout << "MAC: RBS timestamps received." << endl;
+    cout << "MAC: RBS timestamps received." << endl;
 
     if (d_nwk_dev_type == SU
         || (d_nwk_dev_type == SUR && d_sur_state == IN_PARENT_NWK)) {
@@ -1037,7 +1037,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         rbs_t_locals_ptr->push_back (
             (rbs_last_beacon_rcv_timestamp - ref_point_ptime).total_microseconds ());
         rbs_t_refs_ptr->push_back (ref_beacon_rcv_time);
-        cout << "MAC: push (local, ref): ("
+        dout << "MAC: push (local, ref): ("
             << (rbs_last_beacon_rcv_timestamp - ref_point_ptime).total_microseconds ()
             << ", " << ref_beacon_rcv_time << ") to buffers" << endl;
         rbs_new_samples_counter++;
@@ -1061,7 +1061,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
-          dout << "MAC: LR function: Tlocal = " << rbs_linear_regess.a
+          cout << "MAC: LR function: Tlocal = " << rbs_linear_regess.a
               << " * Tref + " << rbs_linear_regess.b << endl;
           rbs_new_samples_counter = 0;
         }
@@ -1804,7 +1804,7 @@ shcs_mac_impl::reporting_thread_func (void)
   cur_time_s = ((cur_time_us + 1000000/2) / 1000000);
 
   if (is_first_time) {
-    dout << "MAC: Reporting: skip first run!." << endl;
+    //dout << "MAC: Reporting: skip first run!." << endl;
     cur_time_s++;
     next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s);
     is_first_time = false;
@@ -1818,11 +1818,11 @@ shcs_mac_impl::reporting_thread_func (void)
   /* Turn on LED on even seconds, off on odd seconds */
   if (cur_time_s % 2 == 0) {
     usrp_gpio_on (0);
-    dout << cur_time << ": GPIO 0 on." << endl;
+    //dout << cur_time << ": GPIO 0 on." << endl;
   }
   else {
     usrp_gpio_off (0);
-    dout << cur_time << ": GPIO 0 off." << endl;
+    //dout << cur_time << ": GPIO 0 off." << endl;
   }
 
   /* Run at the next second */
@@ -1836,7 +1836,6 @@ shcs_mac_impl::reporting_thread_func (void)
 
     next_sec_us_db = 1000000 * rbs_modifier + rbs_current_offset;
     next_sec_us = static_cast<int64_t> (next_sec_us_db);
-    dout << next_sec_us << endl;
 
     next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s)
         + boost::posix_time::microseconds (next_sec_us);
