@@ -1031,7 +1031,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
         /* Calculate avg_delay */
         (*rbs_delay_acc_ptr) (ref_delay);
         rbs_avg_delay = (int64_t) ba::rolling_mean (*rbs_delay_acc_ptr);
-        cout << "MAC: rolling delay: " << rbs_avg_delay << endl;
+        dout << "MAC: rolling delay: " << rbs_avg_delay << endl;
 
         /* Save timestamps to ring buffers */
         rbs_t_locals_ptr->push_back (
@@ -1061,7 +1061,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
-          cout << "MAC: LR function: Tlocal = " << rbs_linear_regess.a
+          cout << "MAC: Tlocal = " << rbs_linear_regess.a
               << " * Tref + " << rbs_linear_regess.b << endl;
           rbs_new_samples_counter = 0;
         }
