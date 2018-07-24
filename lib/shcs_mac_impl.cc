@@ -1061,8 +1061,8 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
-          cout << "MAC: Tlocal = " << rbs_linear_regess.a
-              << " * Tref + " << rbs_linear_regess.b << endl;
+          cout << "MAC: Tlocal = " << rbs_linear_regess.a << " * Tref + "
+              << rbs_linear_regess.b << endl;
           rbs_new_samples_counter = 0;
         }
       }
@@ -1359,27 +1359,30 @@ shcs_mac_impl::transmit_thread_local (void)
 
     /* Check next packet to see whether we should turn on extended operation */
     /* Only check when the last rsend was successful and in correct state */
-    if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_LOCAL) {
-      if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
-        next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
+    if (d_is_ext_op) {
+      if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_LOCAL) {
+        if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
+          next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
 
-        next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
-        if (dest_addr_p[0] == next_dest_addr_p[0]
-            && dest_addr_p[1] == next_dest_addr_p[1]) {
-          dout << "TX_THREAD_LOCAL: turn on EXT_OP." << endl;
-          d_ext_op_sender = true;
+          next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+          if (dest_addr_p[0] == next_dest_addr_p[0]
+              && dest_addr_p[1] == next_dest_addr_p[1]) {
+            dout << "TX_THREAD_LOCAL: turn on EXT_OP." << endl;
+            d_ext_op_sender = true;
+          }
+          else {
+            dout << "TX_THREAD_LOCAL: turn off EXT_OP (to different addr)."
+                << endl;
+            d_ext_op_sender = false;
+          }
         }
         else {
-          dout << "TX_THREAD_LOCAL: turn off EXT_OP (to different addr)."
+          dout << "TX_THREAD_LOCAL: turn off EXT_OP (no data in queue)."
               << endl;
           d_ext_op_sender = false;
         }
-      }
-      else {
-        dout << "TX_THREAD_LOCAL: turn off EXT_OP (no data in queue)." << endl;
-        d_ext_op_sender = false;
-      }
-    }/* End if EXT_OP */
+      }/* End if EXT_OP */
+    }
   }/* End while (1) */
 
 }
@@ -1451,27 +1454,30 @@ shcs_mac_impl::transmit_thread_parent (void)
 
     /* Check next packet to see whether we should turn on extended operation */
     /* Only check when the last rsend was successful and in correct state */
-    if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_PARENT) {
-      if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
-        next_blob = transmit_queue[TX_THREAD_PARENT].front ();
+    if (d_is_ext_op) {
+      if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_PARENT) {
+        if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
+          next_blob = transmit_queue[TX_THREAD_PARENT].front ();
 
-        next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
-        if (dest_addr_p[0] == next_dest_addr_p[0]
-            && dest_addr_p[1] == next_dest_addr_p[1]) {
-          dout << "TX_THREAD_PARENT: turn on EXT_OP." << endl;
-          d_ext_op_sender = true;
+          next_dest_addr_p = (uint8_t*) pmt::blob_data (next_blob);
+          if (dest_addr_p[0] == next_dest_addr_p[0]
+              && dest_addr_p[1] == next_dest_addr_p[1]) {
+            dout << "TX_THREAD_PARENT: turn on EXT_OP." << endl;
+            d_ext_op_sender = true;
+          }
+          else {
+            dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
+                << endl;
+            d_ext_op_sender = false;
+          }
         }
         else {
-          dout << "TX_THREAD_PARENT: turn off EXT_OP (to different addr)."
+          dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)."
               << endl;
           d_ext_op_sender = false;
         }
-      }
-      else {
-        dout << "TX_THREAD_PARENT: turn off EXT_OP (no data in queue)." << endl;
-        d_ext_op_sender = false;
-      }
-    } /* End if EXT_OP */
+      } /* End if EXT_OP */
+    }
   } /* End while (1) */
 }
 
@@ -1801,7 +1807,7 @@ shcs_mac_impl::reporting_thread_func (void)
   cur_time = boost::posix_time::microsec_clock::universal_time ();
   cur_time_us = (cur_time - ref_point_ptime).total_microseconds ();
   /* Round to the nearest second */
-  cur_time_s = ((cur_time_us + 1000000/2) / 1000000);
+  cur_time_s = ((cur_time_us + 1000000 / 2) / 1000000);
 
   if (is_first_time) {
     //dout << "MAC: Reporting: skip first run!." << endl;

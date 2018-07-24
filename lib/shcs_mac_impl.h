@@ -162,7 +162,7 @@ namespace gr
       const double bandwidth = 2e6;      // Hz, constant for LR-WPAN.
       const double sampling_rate = 4e6;  // Hz,
 
-      static const uint32_t Ts = 1000; // ms, slot duration (i.e. dwelling time of a channel hop).
+      static const uint32_t Ts = 300; // ms, slot duration (i.e. dwelling time of a channel hop).
       static const uint32_t Tf = Ts * num_of_channels; // ms, frame duration.
       static const uint32_t Th = 5; // ms, channel hopping duration.
       static const uint32_t Tss = 10; // ms, sensing duration.
@@ -173,7 +173,7 @@ namespace gr
 
       uint32_t Ts_counter = 0;
 
-      /* extended operation */
+      /* csma_with_ack for reliable unicast */
       static const bool csma_with_ack = false;
 
       uint16_t d_suc_id = 0xFFFF;
@@ -249,7 +249,10 @@ namespace gr
       bool d_is_first_recv_data_frame = true;
 
       /* Extended operation */
-      bool d_ext_op_sender = false; /* Sender side */
+      bool d_is_ext_op = false; // true to turn on extended operation.
+
+      /* Sender side */
+      bool d_ext_op_sender = false;
 
       /* Receiving side */
       static const int max_ext_op_recv_wait_time = (max_retries
