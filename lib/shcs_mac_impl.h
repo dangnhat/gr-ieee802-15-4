@@ -174,7 +174,7 @@ namespace gr
       uint32_t Ts_counter = 0;
 
       /* csma_with_ack for reliable unicast */
-      static const bool csma_with_ack = false;
+      static const bool csma_with_ack = true;
 
       uint16_t d_suc_id = 0xFFFF;
       uint16_t d_assoc_suc_id = 0xFFFF; // 0xFFFF means it can be changed after getting beacon.
