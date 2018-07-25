@@ -847,8 +847,10 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 //      - boost::posix_time::milliseconds (Th)
 //      - boost::posix_time::milliseconds (Tb / 2); // old calculation
 
-  int64_t time_until_next_ts = static_cast<int64_t> (static_cast<double> ((Tr
-      + Tdata + Tb / 2) * 1000 - rbs_avg_delay) * 1.0);
+//  int64_t time_until_next_ts = static_cast<int64_t> (static_cast<double> ((Tr
+//      + Tdata + Tb / 2) * 1000 - rbs_avg_delay) * rbs_modifier);
+
+  int64_t time_until_next_ts = (Tr + Tdata + Tb / 2) * 1000 - rbs_avg_delay;
   time_slot_start_tmp = received_timestamp
       + boost::posix_time::microseconds (time_until_next_ts);
 
@@ -1050,17 +1052,31 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
           double t_locals_buf[rbs_offset_max_samples],
               t_refs_buf[rbs_offset_max_samples];
 
-          rbs_t_local_ref = (*rbs_t_locals_ptr)[0];
-          for (int count = 0; count < rbs_t_locals_ptr->size (); count++) {
-            t_locals_buf[count] =
-                (static_cast<double> ((*rbs_t_locals_ptr)[count]
-                    - rbs_t_local_ref));
-            t_refs_buf[count] = (static_cast<double> ((*rbs_t_refs_ptr)[count]
-                - rbs_t_local_ref));
-          }
+          /* Change variables: Tlc' = Tlc - Tlc0, Tr' = Tr - Tr0, Tlc = f(Tr), Tlc' = f'(Tr') */
+          int64_t t_local0 = (*rbs_t_locals_ptr)[0];
+          int64_t t_ref0 = (*rbs_t_refs_ptr)[0];
 
+          cout << endl << "(Tlc, Tr):" << endl;
+          for (int count = 0; count < rbs_t_locals_ptr->size (); count++) {
+            // TEST
+            cout << "(" << (*rbs_t_locals_ptr)[count] << ", "
+                << (*rbs_t_refs_ptr)[count] << ") ";
+
+            /* Buffers of Tlc' and Tr' */
+            t_locals_buf[count] =
+                (static_cast<double> ((*rbs_t_locals_ptr)[count] - t_local0));
+            t_refs_buf[count] = (static_cast<double> ((*rbs_t_refs_ptr)[count]
+                - t_ref0));
+          }
+          cout << endl;
+
+          /* Calculate f': a', b' */
           linear_regression (t_refs_buf, t_locals_buf,
                              rbs_t_locals_ptr->size (), &rbs_linear_regess);
+          /* The slopes (a, a') of f and f' are the same but the intercepts (b, b') are different */
+          /* b = Tlc0 - a*Tr0. */
+          rbs_linear_regess.b = static_cast<double> (t_local0)
+              - rbs_linear_regess.a * (static_cast<double> (t_ref0));
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
@@ -1814,7 +1830,7 @@ shcs_mac_impl::reporting_thread_func (void)
   cur_time_s = ((cur_time_us + 1000000 / 2) / 1000000);
 
   /* Ref time */
-  cur_time_ref_us = cur_time_us - static_cast<int64_t>(rbs_current_offset);
+  cur_time_ref_us = cur_time_us - static_cast<int64_t> (rbs_current_offset);
   cur_time_ref_s = ((cur_time_ref_us + 1000000 / 2) / 1000000);
 
   if (is_first_time) {
@@ -1832,7 +1848,7 @@ shcs_mac_impl::reporting_thread_func (void)
   /* Turn on LED on even seconds, off on odd seconds of Ref time */
   if (cur_time_ref_s % 2 == 0) {
     usrp_gpio_on (0);
-    cout << "\n"<< cur_time << ": GPIO 0 on." << endl;
+    cout << "\n" << cur_time << ": GPIO 0 on." << endl;
   }
   else {
     usrp_gpio_off (0);

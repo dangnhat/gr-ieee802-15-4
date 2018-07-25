@@ -289,7 +289,6 @@ namespace gr
       boost::shared_ptr<boost::circular_buffer<int64_t>> rbs_t_locals_ptr,
           rbs_t_refs_ptr;
       lin_reg rbs_linear_regess {1.0, 0.0};
-      int64_t rbs_t_local_ref = 0;
 
       double rbs_modifier = 1.0, rbs_current_offset = 0.0; // time in local clock / time in ref clock.
       int64_t rbs_avg_delay = 0; // in us.
