@@ -1804,13 +1804,17 @@ void
 shcs_mac_impl::reporting_thread_func (void)
 {
   boost::posix_time::ptime cur_time, next_sec_ptime;
-  int64_t cur_time_us, cur_time_s;
+  int64_t cur_time_us, cur_time_s, cur_time_ref_us, cur_time_ref_s;
   static bool is_first_time = true;
 
   cur_time = boost::posix_time::microsec_clock::universal_time ();
   cur_time_us = (cur_time - ref_point_ptime).total_microseconds ();
   /* Round to the nearest second */
   cur_time_s = ((cur_time_us + 1000000 / 2) / 1000000);
+
+  /* Ref time */
+  cur_time_ref_us = cur_time_us - static_cast<int64_t>(rbs_current_offset);
+  cur_time_ref_s = ((cur_time_ref_us + 1000000 / 2) / 1000000);
 
   if (is_first_time) {
     //dout << "MAC: Reporting: skip first run!." << endl;
@@ -1824,8 +1828,8 @@ shcs_mac_impl::reporting_thread_func (void)
     return;
   }
 
-  /* Turn on LED on even seconds, off on odd seconds */
-  if (cur_time_s % 2 == 0) {
+  /* Turn on LED on even seconds, off on odd seconds of Ref time */
+  if (cur_time_ref_s % 2 == 0) {
     usrp_gpio_on (0);
     //dout << cur_time << ": GPIO 0 on." << endl;
   }

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<?grc format='1' created='3.7.11'?>
+<?grc format='1' created='3.7.12'?>
 <flow_graph>
   <timestamp>Mon Dec 15 13:46:31 2014</timestamp>
   <block>
@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>SU01</value>
+      <value>SU1</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -353,7 +353,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -754,7 +754,7 @@
     </param>
     <param>
       <key>rime_add</key>
-      <value>[12,37]</value>
+      <value>[12,38]</value>
     </param>
     <param>
       <key>ruc_channels</key>
