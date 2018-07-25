@@ -1064,7 +1064,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
-          cout << "MAC: Tlocal = " << rbs_linear_regess.a << " * Tref + "
+          cout << "\nMAC: Tlocal = " << rbs_linear_regess.a << " * Tref + "
               << rbs_linear_regess.b << endl;
           rbs_new_samples_counter = 0;
         }
@@ -1831,11 +1831,11 @@ shcs_mac_impl::reporting_thread_func (void)
   /* Turn on LED on even seconds, off on odd seconds of Ref time */
   if (cur_time_ref_s % 2 == 0) {
     usrp_gpio_on (0);
-    //dout << cur_time << ": GPIO 0 on." << endl;
+    cout << "\n"<< cur_time << ": GPIO 0 on." << endl;
   }
   else {
     usrp_gpio_off (0);
-    //dout << cur_time << ": GPIO 0 off." << endl;
+    cout << "\n" << cur_time << ": GPIO 0 off." << endl;
   }
 
   /* Run at the next second */
