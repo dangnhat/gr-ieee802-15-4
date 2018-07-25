@@ -206,9 +206,9 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   }
 
   /* Reporting thread */
-//  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-//      new gr::thread::thread (
-//          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
+  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+      new gr::thread::thread (
+          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
 }
 
 /*------------------------------------------------------------------------*/
@@ -258,11 +258,11 @@ shcs_mac_impl::channel_hopping (void)
   boost::posix_time::ptime time;
 
   time = boost::posix_time::microsec_clock::universal_time ();
-  cout << endl;
-  cout << time << ": Channel hopping" << endl;
+  dout << endl;
+  dout << time << ": Channel hopping" << endl;
 
   /* Toogle pin 1 */
-  usrp_gpio_toggle (0);
+//  usrp_gpio_toggle (0);
   /* Increase Ts_counter */
   Ts_counter++;
 
@@ -1053,35 +1053,31 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
               t_refs_buf[rbs_offset_max_samples];
 
           /* Change variables: Tlc' = Tlc - Tlc0, Tr' = Tr - Tr0, Tlc = f(Tr), Tlc' = f'(Tr') */
-          int64_t t_local0 = (*rbs_t_locals_ptr)[0];
-          int64_t t_ref0 = (*rbs_t_refs_ptr)[0];
+          rbs_t_local0 = (*rbs_t_locals_ptr)[0];
+          rbs_t_ref0 = (*rbs_t_refs_ptr)[0];
 
-          cout << endl << "(Tlc, Tr):" << endl;
+//          cout << endl << "(Tlc, Tr):" << endl;
           for (int count = 0; count < rbs_t_locals_ptr->size (); count++) {
-            // TEST
-            cout << "(" << (*rbs_t_locals_ptr)[count] << ", "
-                << (*rbs_t_refs_ptr)[count] << ") ";
+//            // TEST
+//            cout << "(" << (*rbs_t_locals_ptr)[count] << ", "
+//                << (*rbs_t_refs_ptr)[count] << ") ";
 
             /* Buffers of Tlc' and Tr' */
             t_locals_buf[count] =
-                (static_cast<double> ((*rbs_t_locals_ptr)[count] - t_local0));
+                (static_cast<double> ((*rbs_t_locals_ptr)[count] - rbs_t_local0));
             t_refs_buf[count] = (static_cast<double> ((*rbs_t_refs_ptr)[count]
-                - t_ref0));
+                - rbs_t_ref0));
           }
           cout << endl;
 
           /* Calculate f': a', b' */
           linear_regression (t_refs_buf, t_locals_buf,
                              rbs_t_locals_ptr->size (), &rbs_linear_regess);
-          /* The slopes (a, a') of f and f' are the same but the intercepts (b, b') are different */
-          /* b = Tlc0 - a*Tr0. */
-          rbs_linear_regess.b = static_cast<double> (t_local0)
-              - rbs_linear_regess.a * (static_cast<double> (t_ref0));
 
           rbs_modifier = rbs_linear_regess.a;
           rbs_current_offset = rbs_linear_regess.b;
-          cout << "\nMAC: Tlocal = " << rbs_linear_regess.a << " * Tref + "
-              << rbs_linear_regess.b << endl;
+          cout << "\nMAC: (Tlocal-Tlocal0) = " << rbs_linear_regess.a
+              << " * (Tref-Tref0) + " << rbs_linear_regess.b << endl;
           rbs_new_samples_counter = 0;
         }
       }
@@ -1821,17 +1817,13 @@ void
 shcs_mac_impl::reporting_thread_func (void)
 {
   boost::posix_time::ptime cur_time, next_sec_ptime;
-  int64_t cur_time_us, cur_time_s, cur_time_ref_us, cur_time_ref_s;
+  int64_t cur_time_us, cur_time_s;
   static bool is_first_time = true;
 
   cur_time = boost::posix_time::microsec_clock::universal_time ();
   cur_time_us = (cur_time - ref_point_ptime).total_microseconds ();
   /* Round to the nearest second */
   cur_time_s = ((cur_time_us + 1000000 / 2) / 1000000);
-
-  /* Ref time */
-  cur_time_ref_us = cur_time_us - static_cast<int64_t> (rbs_current_offset);
-  cur_time_ref_s = ((cur_time_ref_us + 1000000 / 2) / 1000000);
 
   if (is_first_time) {
     //dout << "MAC: Reporting: skip first run!." << endl;
@@ -1846,7 +1838,7 @@ shcs_mac_impl::reporting_thread_func (void)
   }
 
   /* Turn on LED on even seconds, off on odd seconds of Ref time */
-  if (cur_time_ref_s % 2 == 0) {
+  if (will_gpio_be_on) {
     usrp_gpio_on (0);
     cout << "\n" << cur_time << ": GPIO 0 on." << endl;
   }
@@ -1856,19 +1848,42 @@ shcs_mac_impl::reporting_thread_func (void)
   }
 
   /* Run at the next second */
-  if (d_nwk_dev_type == SUC) {
+  if (d_nwk_dev_type == SUC || rbs_t_local0 <= 0) {
     cur_time_s++;
     next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s);
+    if (cur_time_s % 2 == 0) {
+      will_gpio_be_on = true;
+    }
+    else {
+      will_gpio_be_on = false;
+    }
   }
   else {
-    double next_sec_us_db;
-    int64_t next_sec_us;
+    int64_t cur_local_time_since_ref0 = cur_time_us - rbs_t_local0;
+    double cur_ref_time_since_ref0_db =
+        (static_cast<double> (cur_local_time_since_ref0) - rbs_current_offset)
+            / rbs_modifier;
+    int64_t cur_ref_time_us = static_cast<int64_t> (cur_ref_time_since_ref0_db)
+        + rbs_t_ref0;
+    int64_t next_sec_ref_time_s = ((cur_ref_time_us + 1000000 / 2) / 1000000)
+        + 1;
+    int64_t time_until_next_sec_ref_since_ref0_us = next_sec_ref_time_s
+        * 1000000 - rbs_t_ref0;
+    double time_until_next_sec_local_since_ref0_us =
+        static_cast<double> (time_until_next_sec_ref_since_ref0_us)
+            * rbs_modifier + rbs_current_offset;
 
-    next_sec_us_db = 1000000 * rbs_modifier + rbs_current_offset;
-    next_sec_us = static_cast<int64_t> (next_sec_us_db);
-
-    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s)
-        + boost::posix_time::microseconds (next_sec_us);
+    next_sec_ptime =
+        ref_point_ptime
+            + boost::posix_time::microseconds (
+                rbs_t_local0
+                    + static_cast<int64_t> (time_until_next_sec_local_since_ref0_us));
+    if (next_sec_ref_time_s % 2 == 0) {
+      will_gpio_be_on = true;
+    }
+    else {
+      will_gpio_be_on = false;
+    }
   }
 
   tasks_processor::get ().run_at (

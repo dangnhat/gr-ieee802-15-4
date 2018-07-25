@@ -289,6 +289,7 @@ namespace gr
       boost::shared_ptr<boost::circular_buffer<int64_t>> rbs_t_locals_ptr,
           rbs_t_refs_ptr;
       lin_reg rbs_linear_regess {1.0, 0.0};
+      int64_t rbs_t_local0 = -1, rbs_t_ref0 = -1;
 
       double rbs_modifier = 1.0, rbs_current_offset = 0.0; // time in local clock / time in ref clock.
       int64_t rbs_avg_delay = 0; // in us.
@@ -299,6 +300,9 @@ namespace gr
 
       /* USRP GPIO */
       gr::uhd::usrp_source::sptr d_usrp; // pointer to USRP object.
+
+      /* Reporting thread */
+      bool will_gpio_be_on = false;
 
       /**
        * @brief   Control thread for Coordinator.
