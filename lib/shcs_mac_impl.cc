@@ -848,7 +848,7 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
 //      - boost::posix_time::milliseconds (Tb / 2); // old calculation
 
   int64_t time_until_next_ts = static_cast<int64_t> (static_cast<double> ((Tr
-      + Tdata + Tb / 2) * 1000 - rbs_avg_delay) * rbs_modifier);
+      + Tdata + Tb / 2) * 1000 - rbs_avg_delay) * 1.0);
   time_slot_start_tmp = received_timestamp
       + boost::posix_time::microseconds (time_until_next_ts);
 
