@@ -263,7 +263,6 @@ shcs_mac_impl::channel_hopping (void)
 
   /* Toogle pin 1 */
   //usrp_gpio_toggle (1);
-
   /* Increase Ts_counter */
   Ts_counter++;
 
@@ -348,14 +347,16 @@ shcs_mac_impl::spectrum_sensing (void)
   dout << "Avg power (dBm): " << avg_power_dBm << endl;
   dout << "Threshold (dBm): " << d_ss_threshold_dBm << endl;
 
-//  if (avg_power_dBm < d_ss_threshold_dBm) {
-//    is_channel_available = true;
-//  }
-//  else {
-//    is_channel_available = false;
-//  }
+  if (avg_power_dBm < d_ss_threshold_dBm) {
+    is_channel_available = true;
+  }
+  else {
+    is_channel_available = false;
+  }
   /* For demo */
-  is_channel_available = true;
+  if (!is_sleeping_needed) {
+    is_channel_available = true; // Channel is always available.
+  }
 
   is_spectrum_sensing_completed = true;
 }
@@ -1361,7 +1362,7 @@ shcs_mac_impl::transmit_thread_local (void)
 
     /* Check next packet to see whether we should turn on extended operation */
     /* Only check when the last rsend was successful and in correct state */
-    if (d_is_ext_op) {
+    if (d_is_ext_op_needed) {
       if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_LOCAL) {
         if (transmit_queue[TX_THREAD_LOCAL].read_available () > 0) {
           next_blob = transmit_queue[TX_THREAD_LOCAL].front ();
@@ -1456,7 +1457,7 @@ shcs_mac_impl::transmit_thread_parent (void)
 
     /* Check next packet to see whether we should turn on extended operation */
     /* Only check when the last rsend was successful and in correct state */
-    if (d_is_ext_op) {
+    if (d_is_ext_op_needed) {
       if (rsend_result && d_control_thread_state == DATA_TRANSMISSION_PARENT) {
         if (transmit_queue[TX_THREAD_PARENT].read_available () > 0) {
           next_blob = transmit_queue[TX_THREAD_PARENT].front ();
