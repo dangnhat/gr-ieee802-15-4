@@ -206,9 +206,9 @@ shcs_mac_impl::shcs_mac_impl (bool debug, int nwk_dev_type,
   }
 
   /* Reporting thread */
-  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
-      new gr::thread::thread (
-          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
+//  reporting_thread_ptr = boost::shared_ptr<gr::thread::thread> (
+//      new gr::thread::thread (
+//          boost::bind (&shcs_mac_impl::reporting_thread_func, this)));
 }
 
 /*------------------------------------------------------------------------*/
@@ -258,11 +258,11 @@ shcs_mac_impl::channel_hopping (void)
   boost::posix_time::ptime time;
 
   time = boost::posix_time::microsec_clock::universal_time ();
-  dout << endl;
-  dout << time << ": Channel hopping" << endl;
+  cout << endl;
+  cout << time << ": Channel hopping" << endl;
 
   /* Toogle pin 1 */
-  //usrp_gpio_toggle (1);
+  usrp_gpio_toggle (0);
   /* Increase Ts_counter */
   Ts_counter++;
 
@@ -1800,6 +1800,7 @@ shcs_mac_impl::get_packet_error_ratio ()
 //  }
 //}
 /*------------------------------------------------------------------------*/
+// TODO: not great! so buggy, changed to channel hopping for now.
 void
 shcs_mac_impl::reporting_thread_func (void)
 {
