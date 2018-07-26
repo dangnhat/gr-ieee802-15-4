@@ -273,7 +273,7 @@ namespace gr
       boost::posix_time::ptime ref_point_ptime;
 
       /* Modified version of RBS */
-      const int rbs_sync_period = 1000; //ms
+      const int rbs_sync_period = 500; //ms
       uint8_t d_last_recv_seqno_rbs = 0;
       boost::posix_time::ptime rbs_last_beacon_send_timestamp;
       boost::posix_time::ptime rbs_last_beacon_rcv_timestamp;
@@ -284,7 +284,7 @@ namespace gr
       boost::shared_ptr<MeanAccumulator> rbs_delay_acc_ptr;
       /* RBS linear regression for offsets */
       const int rbs_offset_max_samples = 10;
-      const int rbs_linear_regression_min_new_samples = 5;
+      const int rbs_linear_regression_min_new_samples = 3;
       uint32_t rbs_new_samples_counter = 0;
       boost::shared_ptr<boost::circular_buffer<int64_t>> rbs_t_locals_ptr,
           rbs_t_refs_ptr;
