@@ -283,7 +283,7 @@ namespace gr
       const int rbs_delay_window_size = 100;
       boost::shared_ptr<MeanAccumulator> rbs_delay_acc_ptr;
       /* RBS linear regression for offsets */
-      const int rbs_offset_max_samples = 10;
+      const int rbs_offset_max_samples = 30;
       const int rbs_linear_regression_min_new_samples = 3;
       uint32_t rbs_new_samples_counter = 0;
       boost::shared_ptr<boost::circular_buffer<int64_t>> rbs_t_locals_ptr,

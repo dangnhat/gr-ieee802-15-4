@@ -610,6 +610,15 @@ shcs_mac_impl::reporting_duration (void)
 
   is_busy_signal_received = false;
 
+  //TODO: For demo, temporary put RBS packets here to avoid collision
+  // at the beginning of data duration
+  /* RBS: Send timestamps packet */
+  if (rbs_send_timestamps_packet && rbs_sync_period_flag) {
+    generate_rbs_timestamps_packet (rbs_last_beacon_send_timestamp,
+                                    rbs_last_beacon_rcv_timestamp);
+  }
+  rbs_send_timestamps_packet = false;
+
   return;
 }
 
@@ -622,13 +631,6 @@ shcs_mac_impl::data_duration (void)
   dout << time << ": Data Duration" << endl;
 
   if ((is_channel_available) && (!is_busy_signal_received)) {
-    /* RBS: Send timestamps packet */
-    if (rbs_send_timestamps_packet && rbs_sync_period_flag) {
-      generate_rbs_timestamps_packet (rbs_last_beacon_send_timestamp,
-                                      rbs_last_beacon_rcv_timestamp);
-    }
-    rbs_send_timestamps_packet = false;
-
     /* Wake transmit_thread up */
     gr::thread::scoped_lock lock (d_tx_mutex);
     if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_PARENT_NWK)) {
