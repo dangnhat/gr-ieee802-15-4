@@ -1822,6 +1822,16 @@ shcs_mac_impl::reporting_thread_func (void)
   int64_t cur_time_us, cur_time_s;
   static bool is_first_time = true;
 
+  /* TODO: For demo. Since one of the assumption of RBS is every device should be
+   the same or at least, they have similar delays for transmission and receiving.
+   However, on laptop, the loopback delay is much smaller than on Galaxy devices.
+   (i.e. ~1600us vs. ~3000us) Thus, I'm put a compensation for the SUC (laptop)
+   device for now. */
+  int64_t compensation = 0; //us
+  if (d_nwk_dev_type == SUC) {
+    compensation = 1500; //us
+  }
+
   cur_time = boost::posix_time::microsec_clock::universal_time ();
   cur_time_us = (cur_time - ref_point_ptime).total_microseconds ();
   /* Round to the nearest second */
@@ -1842,17 +1852,20 @@ shcs_mac_impl::reporting_thread_func (void)
   /* Turn on LED on even seconds, off on odd seconds of Ref time */
   if (will_gpio_be_on) {
     usrp_gpio_on (0);
-    cout << "\n" << cur_time << ": GPIO 0 on." << endl;
+    cout << "\n" << cur_time - boost::posix_time::microseconds (compensation)
+        << ": GPIO 0 on." << endl;
   }
   else {
     usrp_gpio_off (0);
-    cout << "\n" << cur_time << ": GPIO 0 off." << endl;
+    cout << "\n" << cur_time - boost::posix_time::microseconds (compensation)
+        << ": GPIO 0 off." << endl;
   }
 
   /* Run at the next second */
   if (d_nwk_dev_type == SUC || rbs_t_local0 <= 0) {
     cur_time_s++;
-    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s);
+    next_sec_ptime = ref_point_ptime + boost::posix_time::seconds (cur_time_s)
+        + boost::posix_time::microseconds (compensation);
     if (cur_time_s % 2 == 0) {
       will_gpio_be_on = true;
     }
