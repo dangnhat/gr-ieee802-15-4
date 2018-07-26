@@ -117,7 +117,7 @@ void
 uc_connection::unpack (pmt::pmt_t msg)
 {
   unsigned char buf[256];
-  memset(buf, 0, 256);
+  memset (buf, 0, 256);
   size_t data_len = pmt::blob_length (msg);
   memcpy (buf + 2, pmt::blob_data (msg), data_len);
 
@@ -161,19 +161,16 @@ const int routing_table_max_cols = 4;
 typedef uint8_t routing_table_t[routing_table_max_rows][routing_table_max_cols];
 
 const routing_table_t suc_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 35, 1, 0 }, { 12, 36, 1, 0 }, { 12, 37, 1, 0 }, { 12, 38, 1, 0 },};
+    { 12, 35, 1, 0 }, { 12, 36, 1, 0 }, { 12, 37, 1, 0 }, { 12, 38, 1, 0 }, };
 
 const routing_table_t sur1_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 34, 0, 0 },
-    { 12, 36, 2, 0 }, { 12, 37, 2, 0 }, { 12, 38, 2, 0 }, };
+    { 12, 34, 0, 0 }, { 12, 36, 2, 0 }, { 12, 37, 2, 0 }, { 12, 38, 2, 0 }, };
 
 const routing_table_t sur2_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 34, 1, 0 }, { 12, 35, 1, 0 },
-    { 12, 37, 3, 0 }, { 12, 38, 3, 0 }, };
+    { 12, 34, 1, 0 }, { 12, 35, 1, 0 }, { 12, 37, 3, 0 }, { 12, 38, 3, 0 }, };
 
 const routing_table_t sur3_routing_table = { // dest RIME address, next hop MAC address.
-    { 12, 34, 2, 0 }, { 12, 35, 2, 0 }, { 12, 36, 2, 0 },
-    { 12, 38, 3, 1 }, };
+    { 12, 34, 2, 0 }, { 12, 35, 2, 0 }, { 12, 36, 2, 0 }, { 12, 38, 3, 1 }, };
 
 int
 uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
@@ -196,8 +193,22 @@ uc_connection::get_next_hop_mac_addr (const uint8_t* rime_src,
     routing_table = &sur3_routing_table;
   }
   else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 38)) {
-    /* TODO: hard coded default route for SU1 */
+    /* hard coded default route for SU1 */
     next_hop_mac[0] = 3;
+    next_hop_mac[1] = 0;
+
+    return 0;
+  }
+  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 39)) {
+    /* hard coded default route for SU2 */
+    next_hop_mac[0] = 0;
+    next_hop_mac[1] = 0;
+
+    return 0;
+  }
+  else if ((d_rime_add_mine[0] == 12) && (d_rime_add_mine[1] == 40)) {
+    /* hard coded default route for SU3 */
+    next_hop_mac[0] = 0;
     next_hop_mac[1] = 0;
 
     return 0;
