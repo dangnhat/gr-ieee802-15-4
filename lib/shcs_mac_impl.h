@@ -206,7 +206,7 @@ namespace gr
       double d_ss_threshold_dBm = 10; // dBm, 50% of 20dBm.
       double d_avg_power = 0; // W.
       uint32_t d_avg_power_count = 0;
-      bool is_sleeping_needed = false; // false to turn off sleeping during
+      bool is_sleeping_needed = true; // false to turn off sleeping during
       // data duration regardless of spectrum sensing result.
 
       /* Beacon duration */
@@ -251,7 +251,7 @@ namespace gr
       bool d_is_first_recv_data_frame = true;
 
       /* Extended operation */
-      bool d_is_ext_op_needed = false; // true to turn on extended operation.
+      bool d_is_ext_op_needed = true; // true to turn on extended operation.
 
       /* Sender side */
       bool d_ext_op_sender = false;
@@ -645,11 +645,6 @@ namespace gr
       usrp_gpio_on (int pin);
       void
       usrp_gpio_off (int pin);
-
-      /**
-       * @brief   Calculate linear regression slope.
-       */
-      double lr_slope(const std::vector<double>& x, const std::vector<double>& y);
 
       /**
        * @brief    Buffer related functions.

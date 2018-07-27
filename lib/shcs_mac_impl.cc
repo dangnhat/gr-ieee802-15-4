@@ -353,7 +353,7 @@ shcs_mac_impl::spectrum_sensing (void)
   else {
     is_channel_available = false;
   }
-  /* For demo */
+
   if (!is_sleeping_needed) {
     is_channel_available = true; // Channel is always available.
   }
@@ -423,7 +423,6 @@ shcs_mac_impl::csma_ca_send (uint16_t transmit_state, bool wait_for_beacon,
     if (backoff_time_max != 0) {
       backoff_time = ((rand () % backoff_time_max) + 1) * csma_ca_backoff_unit;
 
-//      dout << "CSMA: backoff time max " << backoff_time_max << endl;
       dout << "CSMA: backoff " << backoff_time << "ms" << endl;
       boost::this_thread::sleep_for (
           boost::chrono::milliseconds { backoff_time });
@@ -465,14 +464,11 @@ shcs_mac_impl::csma_ca_rsend (uint8_t transmit_thread_id,
   }
 
   uint8_t seqno, backup_buf[256];
-//  uint8_t dest_addr[8];
-//  le_uint16_t dest_panid;
 
   /* Backup buffer */
   memcpy (backup_buf, buf, len);
 
-  /* Get dest address and seqno*/
-//  ieee802154_get_dst (backup_buf, dest_addr, &dest_panid);
+  /* Get seqno*/
   seqno = ieee802154_get_seq (backup_buf);
 
   for (int count = 0; count < max_retries + 1; count++) { /* first time transmit is not a retry */
@@ -602,7 +598,7 @@ shcs_mac_impl::beacon_duration (void)
 void
 shcs_mac_impl::reporting_duration (void)
 {
-//TODO: no need for now.
+  //TODO: no need for now.
 
   boost::posix_time::ptime time;
   time = boost::posix_time::microsec_clock::universal_time ();
@@ -636,10 +632,6 @@ shcs_mac_impl::data_duration (void)
     if ((d_nwk_dev_type == SUR) && (d_sur_state == IN_PARENT_NWK)) {
       d_control_thread_state = DATA_TRANSMISSION_PARENT;
       dout << "Channel is available: DATA_TRANSMISSION_PARENT state, " << endl;
-
-//      /* TPSN test */
-//      /* Request TPSN ack */
-//      generate_tpsn_req ((uint8_t*) &d_assoc_suc_id);
     }
     else {
       d_control_thread_state = DATA_TRANSMISSION_LOCAL;
@@ -887,20 +879,6 @@ shcs_mac_impl::mac_in (pmt::pmt_t msg)
     /* Beacon found */
     dout << "MAC: Found a beacon." << endl;
 
-    /* RBS testing */
-//    uint8_t recv_seqno = ieee802154_get_seq (frame_p);
-//
-//    if (recv_seqno != d_last_recv_seqno_rbs+1) {
-//      d_last_recv_seqno_rbs++;
-//      while (d_last_recv_seqno_rbs != recv_seqno) {
-//        cout << (int) d_last_recv_seqno_rbs << endl;
-//        d_last_recv_seqno_rbs++;
-//      }
-//    }
-//
-//    cout << (int) recv_seqno << ", "
-//        << (received_timestamp - ref_point_ptime).total_microseconds () << endl;
-//    d_last_recv_seqno_rbs = recv_seqno;
     switch (d_control_thread_state) {
       case SU_BOOTSTRAPPING:
         /* Store SUC_ID, sensing time, current random seed, time frame start time */
@@ -1794,6 +1772,7 @@ shcs_mac_impl::get_packet_error_ratio ()
 }
 
 /*------------------------------------------------------------------------*/
+//This will report average datarate every d_reporting_period.
 //void
 //shcs_mac_impl::reporting_thread_func (void)
 //{
@@ -1814,7 +1793,8 @@ shcs_mac_impl::get_packet_error_ratio ()
 //  }
 //}
 /*------------------------------------------------------------------------*/
-// TODO: not great! so buggy, changed to channel hopping for now.
+// Time synchronization demostration, every device will turn on/off GPIO at the
+// same time.
 void
 shcs_mac_impl::reporting_thread_func (void)
 {
@@ -1829,7 +1809,7 @@ shcs_mac_impl::reporting_thread_func (void)
    device for now. */
   int64_t compensation = 0; //us
   if (d_nwk_dev_type == SUC) {
-    compensation = 1500; //us
+    compensation = 0; //us, put the com[ensation value here if needed.
   }
 
   cur_time = boost::posix_time::microsec_clock::universal_time ();
@@ -1936,14 +1916,14 @@ shcs_mac_impl::usrp_gpio_init (void)
 //      dout << i << endl;
 //    }
 
-// set up our masks, defining the pin numbers
+  // set up our masks, defining the pin numbers
   const uint32_t MAN_GPIO_MASK = 0x0F;
-// set up our values for ATR control: 1 for ATR, 0 for manual
+  // set up our values for ATR control: 1 for ATR, 0 for manual
   const uint32_t ATR_CONTROL = ~MAN_GPIO_MASK;
-// set up the GPIO directions: 1 for output, 0 for input
+  // set up the GPIO directions: 1 for output, 0 for input
   const uint32_t GPIO_DDR = MAN_GPIO_MASK;
 
-// now, let's do the basic ATR setup
+  // now, let's do the basic ATR setup
   d_usrp->set_gpio_attr ("FP0", "CTRL", ATR_CONTROL, MAN_GPIO_MASK);
   d_usrp->set_gpio_attr ("FP0", "DDR", GPIO_DDR, MAN_GPIO_MASK);
 }
@@ -1977,47 +1957,6 @@ shcs_mac_impl::usrp_gpio_toggle (int pin)
   else {
     usrp_gpio_off (pin);
   }
-}
-
-/*----------------------------------------------------------------------------*/
-double
-shcs_mac_impl::lr_slope (const vector<double>& x, const vector<double>& y)
-{
-  if (x.size () != y.size ()) {
-    dout << "MAC: lr_slope: x.size != y.size, return 0";
-  }
-  double n = x.size ();
-
-  // Print x, y
-//  dout << "x: ";
-//  for (int i : x) {
-//    dout << i << ", ";
-//  }
-//  dout << endl;
-//
-//  dout << "y: ";
-//  for (int i : y) {
-//    dout << i << ", ";
-//  }
-//  dout << endl;
-
-  double avgX = accumulate (x.begin (), x.end (), 0.0) / n;
-  double avgY = accumulate (y.begin (), y.end (), 0.0) / n;
-
-  double numerator = 0.0;
-  double denominator = 0.0;
-
-  for (int i = 0; i < n; ++i) {
-    numerator += (x[i] - avgX) * (y[i] - avgY);
-    denominator += (x[i] - avgX) * (x[i] - avgX);
-  }
-
-  if (denominator == 0) {
-    dout << "MAC: lr_slope: denominator = 0, return 0";
-    return 0;
-  }
-
-  return numerator / denominator;
 }
 
 /*----------------------------------------------------------------------------*/
